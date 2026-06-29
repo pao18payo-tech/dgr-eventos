@@ -798,11 +798,18 @@ function limpiarFiltros() {
   filtrarTabla();
 }
 
+// ══════════════════════════════════════════
+// PAGINACIÓN
+// ══════════════════════════════════════════
+let paginaActual = 1;
+const REGISTROS_POR_PAGINA = 10;
+let filtradosGlobal = [];
+
 function filtrarTabla() {
   const txt = document.getElementById('searchText').value.toLowerCase();
   const tec = document.getElementById('searchTecnico').value;
   const parr = document.getElementById('searchParroquia').value;
-  const desde = document.getElementById('searchFechaDesde').value; // yyyy-mm-dd
+  const desde = document.getElementById('searchFechaDesde').value;
   const hasta = document.getElementById('searchFechaHasta').value;
 
   const filtrados = todosRegistros.filter(r => {
@@ -815,27 +822,39 @@ function filtrarTabla() {
       (r.nombre_organizador||'').toLowerCase().includes(txt);
     const matchTec = !tec || (r.tecnico||'').toUpperCase().includes(tec.toUpperCase());
     const matchParr = !parr || r.gad_parroquial === parr;
-    // Filtro rango por fecha_inicio del evento
     const fi = r.fecha_inicio || '';
     const matchDesde = !desde || fi >= desde;
     const matchHasta = !hasta || fi <= hasta;
     return matchTxt && matchTec && matchParr && matchDesde && matchHasta;
   });
 
-  // Ordenar por num_resolucion ascendente
   filtrados.sort((a,b) => (a.num_resolucion||'') > (b.num_resolucion||'') ? 1 : -1);
 
-  document.getElementById('countBadge').textContent = filtrados.length + ' registros';
+  filtradosGlobal = filtrados;
+  window._filtrados = filtrados;
+  paginaActual = 1;
+  renderTabla();
+}
+
+function renderTabla() {
+  const total = filtradosGlobal.length;
+  const totalPaginas = Math.ceil(total / REGISTROS_POR_PAGINA);
+  const inicio = (paginaActual - 1) * REGISTROS_POR_PAGINA;
+  const fin = inicio + REGISTROS_POR_PAGINA;
+  const pagina = filtradosGlobal.slice(inicio, fin);
+
+  document.getElementById('countBadge').textContent = total + ' registros';
 
   const tbody = document.getElementById('tablaBody');
-  if (!filtrados.length) {
+  if (!total) {
     tbody.innerHTML = '<tr><td colspan="15" style="text-align:center;padding:24px;color:#94a3b8">No se encontraron registros</td></tr>';
+    renderPaginacion(0, 0);
     return;
   }
 
-  tbody.innerHTML = filtrados.map((r, i) => `
+  tbody.innerHTML = pagina.map((r, i) => `
     <tr>
-      <td style="text-align:center;font-weight:700;color:var(--gray-400)">${i+1}</td>
+      <td style="text-align:center;font-weight:700;color:var(--gray-400)">${inicio + i + 1}</td>
       <td><span class="badge-num">${r.num_resolucion||'—'}</span></td>
       <td style="font-size:11px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.oficio_gad||''}">${r.oficio_gad||'—'}</td>
       <td style="font-size:11px">${r.gad_parroquial||'—'}</td>
@@ -857,8 +876,36 @@ function filtrarTabla() {
     </tr>
   `).join('');
 
-  // Guardar filtrados para exportación
-  window._filtrados = filtrados;
+  renderPaginacion(totalPaginas, total);
+}
+
+function renderPaginacion(totalPaginas, total) {
+  let el = document.getElementById('paginacion');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'paginacion';
+    document.getElementById('tablaBody').parentElement.parentElement.appendChild(el);
+  }
+  if (totalPaginas <= 1) { el.innerHTML = ''; return; }
+  const inicio = (paginaActual - 1) * REGISTROS_POR_PAGINA + 1;
+  const fin = Math.min(paginaActual * REGISTROS_POR_PAGINA, total);
+  el.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-top:1px solid var(--gray-200);font-size:12px;color:var(--gray-600)';
+  el.innerHTML = `
+    <span>Mostrando ${inicio}–${fin} de ${total} registros</span>
+    <div style="display:flex;gap:4px;align-items:center">
+      <button onclick="irPagina(1)" ${paginaActual===1?'disabled':''} class="btn btn-secondary btn-sm">«</button>
+      <button onclick="irPagina(${paginaActual-1})" ${paginaActual===1?'disabled':''} class="btn btn-secondary btn-sm">‹</button>
+      <span style="padding:0 8px;font-weight:700">Pág. ${paginaActual} / ${totalPaginas}</span>
+      <button onclick="irPagina(${paginaActual+1})" ${paginaActual===totalPaginas?'disabled':''} class="btn btn-secondary btn-sm">›</button>
+      <button onclick="irPagina(${totalPaginas})" ${paginaActual===totalPaginas?'disabled':''} class="btn btn-secondary btn-sm">»</button>
+    </div>
+  `;
+}
+
+function irPagina(n) {
+  const totalPaginas = Math.ceil(filtradosGlobal.length / REGISTROS_POR_PAGINA);
+  paginaActual = Math.max(1, Math.min(n, totalPaginas));
+  renderTabla();
 }
 
 // ══════════════════════════════════════════
@@ -1121,7 +1168,7 @@ function generarPDF(r) {
     if (!r.horarios) return '';
     try {
       const hs = JSON.parse(r.horarios);
-      if (!hs.length) return '';
+      if (!Array.isArray(hs) || !hs.length) return `<tr><td class="lbl">Horario:</td><td colspan="3">${r.horarios}</td></tr>`;
       const mH = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
       const dH = ['DOM','LUN','MAR','MIÉ','JUE','VIE','SÁB'];
       const celdas = hs.map(h => {
@@ -1129,7 +1176,7 @@ function generarPDF(r) {
         return `<td style="border:1px solid #ccc;padding:3px 6px;font-size:7.5pt;text-align:center"><strong>${dH[d.getDay()]} ${d.getDate()} ${mH[d.getMonth()]}</strong><br>${h.hora_inicio||'—'} a ${h.hora_fin||'—'}</td>`;
       }).join('');
       return `<tr><td class="lbl">Horario:</td><td colspan="3" style="padding:3px"><table style="width:100%;border-collapse:collapse"><tr>${celdas}</tr></table></td></tr>`;
-    } catch(e) { return ''; }
+    } catch(e) { return `<tr><td class="lbl">Horario:</td><td colspan="3">${r.horarios}</td></tr>`; }
   })()}
 </table>
 
