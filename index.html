@@ -828,7 +828,7 @@ function filtrarTabla() {
     return matchTxt && matchTec && matchParr && matchDesde && matchHasta;
   });
 
-  filtrados.sort((a,b) => (a.num_resolucion||'') > (b.num_resolucion||'') ? 1 : -1);
+  filtrados.sort((a,b) => (a.num_resolucion||'') < (b.num_resolucion||'') ? 1 : -1);
 
   filtradosGlobal = filtrados;
   window._filtrados = filtrados;
