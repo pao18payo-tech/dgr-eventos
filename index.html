@@ -1410,4 +1410,76 @@ async function confirmarImport() {
   }, 1500);
 }
 
+// ══════════════════════════════════════════
+// TOAST NOTIFICATIONS
+// ══════════════════════════════════════════
+function toast(msg, tipo='info', duracion=3500) {
+  const container = document.getElementById('toast');
+  const item = document.createElement('div');
+  item.className = 'toast-item ' + (tipo==='ok'?'ok':tipo==='err'?'err':tipo==='warn'?'warn':'');
+  const iconos = {ok:'✅', err:'❌', warn:'⚠️', info:'ℹ️'};
+  item.innerHTML = `<span>${iconos[tipo]||'ℹ️'}</span><span>${msg}</span>`;
+  container.appendChild(item);
+  setTimeout(() => { item.style.opacity='0'; item.style.transition='opacity .3s'; setTimeout(()=>item.remove(), 300); }, duracion);
+}
 
+// ══════════════════════════════════════════
+// TABS
+// ══════════════════════════════════════════
+function showTab(tab) {
+  ['registro','consulta','importar'].forEach(t => {
+    document.getElementById('tab-content-' + t).style.display = t===tab ? 'block' : 'none';
+    document.getElementById('tab-' + t).classList.toggle('active', t===tab);
+  });
+  if (tab==='consulta') cargarRegistros();
+}
+
+// ══════════════════════════════════════════
+// LIMPIAR FORMULARIO
+// ══════════════════════════════════════════
+function limpiarFormulario() {
+  ['f_parroquia','f_nombre_evento','f_fecha_inicio','f_fecha_fin','f_lugar',
+   'f_aforo','f_clasificacion','f_oficio_gad','f_org_nombre','f_org_contacto',
+   'f_del_nombre','f_del_contacto','f_tecnico','f_observaciones'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('f_fecha_validacion').valueAsDate = new Date();
+  document.getElementById('horarios-section').style.display = 'none';
+  document.getElementById('horarios-container').innerHTML = '';
+  const radio = document.querySelector('input[name="quien_firma"][value="ORGANIZADOR/A"]');
+  if (radio) radio.checked = true;
+}
+
+// ══════════════════════════════════════════
+// CANCELAR IMPORT
+// ══════════════════════════════════════════
+function cancelarImport() {
+  csvData = [];
+  document.getElementById('importPreview').style.display = 'none';
+  document.getElementById('csvInput').value = '';
+}
+
+// ══════════════════════════════════════════
+// PARSEO DE FECHAS (importación CSV)
+// ══════════════════════════════════════════
+function parseDate(str) {
+  if (!str) return null;
+  str = str.trim();
+  // yyyy-mm-dd
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+  // dd/mm/yyyy o dd-mm-yyyy
+  const m1 = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (m1) return `${m1[3]}-${m1[2].padStart(2,'0')}-${m1[1].padStart(2,'0')}`;
+  // mm/dd/yyyy
+  const m2 = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if (m2) {
+    const y = m2[3].length===2 ? '20'+m2[3] : m2[3];
+    return `${y}-${m2[1].padStart(2,'0')}-${m2[2].padStart(2,'0')}`;
+  }
+  return null;
+}
+
+</script>
+</body>
+</html>
