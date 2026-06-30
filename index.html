@@ -364,8 +364,9 @@ tbody td{padding:9px 12px;vertical-align:top}
 
           <!-- BOTONES -->
           <div class="btn-row full">
-            <button class="btn btn-primary" onclick="guardarRegistro()">💾 Guardar Validación</button>
+            <button class="btn btn-primary" id="btnGuardar" onclick="guardarRegistro()">💾 Guardar Validación</button>
             <button class="btn btn-secondary" onclick="limpiarFormulario()">✕ Limpiar</button>
+            <button class="btn btn-secondary" id="btnCancelarEdicion" onclick="cancelarEdicion()" style="display:none;background:#fee2e2;color:#dc2626;border:1px solid #fecaca">✕ Cancelar edición</button>
           </div>
 
         </div>
@@ -552,6 +553,7 @@ async function supaFetch(path, opts={}) {
 let todosRegistros = [];
 let csvData = [];
 let proximoNumero = 1;
+let editandoId = null; // id del registro en edición (null = modo nuevo registro)
 
 
 // ══════════════════════════════════════════
@@ -707,8 +709,8 @@ async function guardarRegistro() {
   const quienFirmaEl = document.querySelector('input[name="quien_firma"]:checked');
   const quienFirma = quienFirmaEl ? quienFirmaEl.value : 'ORGANIZADOR/A';
 
-  // Número como texto para num_resolucion
-  const numResolucion = getNumeroValidacion();
+  // Si estamos editando, se conserva el num_resolucion original; si es nuevo, se asigna el siguiente correlativo
+  const numResolucion = editandoId ? document.getElementById('numValue').textContent.trim() : getNumeroValidacion();
 
   const payload = {
     num_resolucion: numResolucion,
@@ -728,32 +730,52 @@ async function guardarRegistro() {
     tecnico: req.tecnico,
     observaciones: document.getElementById('f_observaciones').value.trim() || null,
     quien_firma: quienFirma,
-    firma: null,
-    horarios: obtenerHorarios(),
-    created_at: new Date().toISOString()
+    horarios: obtenerHorarios()
   };
 
   try {
-    // Verificar que el num_resolucion no esté ya usado
-    const check = await supaFetch(TABLE + '?num_resolucion=eq.' + encodeURIComponent(numResolucion) + '&select=id');
-    if (check && check.length > 0) {
-      toast('⚠️ Número ya usado. Recargando numeración...', 'warn');
-      await cargarProximoNumero();
-      return;
-    }
+    if (editandoId) {
+      // ── MODO EDICIÓN: actualizar registro existente ──
+      await supaFetch(TABLE + '?id=eq.' + editandoId, {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+        prefer: 'return=minimal'
+      });
 
-    await supaFetch(TABLE, {method:'POST', body: JSON.stringify(payload), prefer:'return=representation'});
-    
-    toast('✅ Validación ' + numResolucion + ' guardada correctamente', 'ok');
-    
-    // Generar PDF automáticamente
-    setTimeout(() => generarPDF(payload), 500);
-    
-    // Actualizar numeración y limpiar
-    proximoNumero++;
-    actualizarDisplayNumero();
-    limpiarFormulario();
-    await cargarRegistros();
+      toast('✅ Validación ' + numResolucion + ' actualizada correctamente', 'ok');
+
+      editandoId = null;
+      document.getElementById('btnGuardar').textContent = '💾 Guardar Validación';
+      document.getElementById('btnCancelarEdicion').style.display = 'none';
+      limpiarFormulario();
+      await cargarProximoNumero();
+      await cargarRegistros();
+
+    } else {
+      // ── MODO NUEVO: verificar que el número no esté ya usado y crear ──
+      const check = await supaFetch(TABLE + '?num_resolucion=eq.' + encodeURIComponent(numResolucion) + '&select=id');
+      if (check && check.length > 0) {
+        toast('⚠️ Número ya usado. Recargando numeración...', 'warn');
+        await cargarProximoNumero();
+        return;
+      }
+
+      payload.firma = null;
+      payload.created_at = new Date().toISOString();
+
+      await supaFetch(TABLE, {method:'POST', body: JSON.stringify(payload), prefer:'return=representation'});
+
+      toast('✅ Validación ' + numResolucion + ' guardada correctamente', 'ok');
+
+      // Generar PDF automáticamente
+      setTimeout(() => generarPDF(payload), 500);
+
+      // Actualizar numeración y limpiar
+      proximoNumero++;
+      actualizarDisplayNumero();
+      limpiarFormulario();
+      await cargarRegistros();
+    }
 
   } catch(e) {
     toast('Error al guardar: ' + e.message, 'err');
@@ -870,6 +892,7 @@ function renderTabla() {
       <td style="font-size:11px">${(r.tecnico||'—').split(' ').slice(0,2).join(' ')}</td>
       <td style="white-space:nowrap">
         <button class="btn btn-secondary btn-sm" onclick="verDetalle(${r.id})" title="Ver detalle">👁</button>
+        <button class="btn btn-secondary btn-sm" onclick="editarRegistro(${r.id})" title="Editar registro" style="background:#fef3c7;color:#92400e;border:1px solid #fcd34d">✏️</button>
         <button class="btn btn-primary btn-sm" onclick="generarPDFById(${r.id})" title="Generar PDF">PDF</button>
         <button class="btn btn-sm" onclick="eliminarRegistro(${r.id},'${r.num_resolucion||''}')" title="Eliminar registro" style="background:#fee2e2;color:#dc2626;border:1px solid #fecaca">🗑</button>
       </td>
@@ -1033,6 +1056,73 @@ function campo(label, val) {
 
 function cerrarModal() {
   document.getElementById('modalOverlay').style.display = 'none';
+}
+
+// ══════════════════════════════════════════
+// EDITAR REGISTRO
+// ══════════════════════════════════════════
+function editarRegistro(id) {
+  const r = todosRegistros.find(x=>x.id===id);
+  if (!r) { toast('Registro no encontrado', 'err'); return; }
+
+  editandoId = id;
+
+  // Ir a la pestaña de registro
+  showTab('registro');
+
+  // Rellenar campos
+  document.getElementById('f_parroquia').value = r.gad_parroquial || '';
+  document.getElementById('f_nombre_evento').value = r.nombre_evento || '';
+  document.getElementById('f_fecha_inicio').value = r.fecha_inicio || '';
+  document.getElementById('f_fecha_fin').value = r.fecha_fin || '';
+  document.getElementById('f_lugar').value = r.lugar || '';
+  document.getElementById('f_aforo').value = r.aforo || '';
+  document.getElementById('f_fecha_validacion').value = r.fecha_validacion || '';
+  document.getElementById('f_clasificacion').value = r.clasificacion || '';
+  document.getElementById('f_oficio_gad').value = r.oficio_gad || '';
+  document.getElementById('f_org_nombre').value = r.nombre_organizador || '';
+  document.getElementById('f_org_contacto').value = r.contacto_organizador || '';
+  document.getElementById('f_del_nombre').value = r.nombre_delegado || '';
+  document.getElementById('f_del_contacto').value = r.contacto_delegado || '';
+  document.getElementById('f_tecnico').value = r.tecnico || '';
+  document.getElementById('f_observaciones').value = r.observaciones || '';
+
+  const radio = document.querySelector(`input[name="quien_firma"][value="${r.quien_firma||'ORGANIZADOR/A'}"]`);
+  if (radio) radio.checked = true;
+
+  // Generar filas de horario según fechas y luego rellenar con los valores guardados
+  generarFilasHorario();
+  if (r.horarios) {
+    try {
+      const hs = JSON.parse(r.horarios);
+      if (Array.isArray(hs)) {
+        hs.forEach(h => {
+          const fila = document.getElementById('hfila-' + h.fecha);
+          if (fila) {
+            fila.querySelector('.h-inicio').value = h.hora_inicio || '';
+            fila.querySelector('.h-fin').value = h.hora_fin || '';
+          }
+        });
+      }
+    } catch(e) {}
+  }
+
+  // Cambiar número mostrado y estado de botones
+  document.getElementById('numValue').textContent = r.num_resolucion || '—';
+  document.getElementById('btnGuardar').textContent = '💾 Actualizar Validación';
+  document.getElementById('btnCancelarEdicion').style.display = 'inline-flex';
+
+  toast('✏️ Editando ' + (r.num_resolucion||'') + ' — modifica los campos y presiona Actualizar', 'warn');
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function cancelarEdicion() {
+  editandoId = null;
+  limpiarFormulario();
+  actualizarDisplayNumero();
+  document.getElementById('btnGuardar').textContent = '💾 Guardar Validación';
+  document.getElementById('btnCancelarEdicion').style.display = 'none';
+  toast('Edición cancelada', 'info');
 }
 
 // ══════════════════════════════════════════
@@ -1516,6 +1606,12 @@ function limpiarFormulario() {
   document.getElementById('horarios-container').innerHTML = '';
   const radio = document.querySelector('input[name="quien_firma"][value="ORGANIZADOR/A"]');
   if (radio) radio.checked = true;
+  if (editandoId) {
+    editandoId = null;
+    document.getElementById('btnGuardar').textContent = '💾 Guardar Validación';
+    document.getElementById('btnCancelarEdicion').style.display = 'none';
+    actualizarDisplayNumero();
+  }
 }
 
 // ══════════════════════════════════════════
