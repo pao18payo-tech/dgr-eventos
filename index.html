@@ -911,6 +911,21 @@ function irPagina(n) {
 // ══════════════════════════════════════════
 // EXPORTAR MATRIZ (respeta filtros activos)
 // ══════════════════════════════════════════
+function formatHorarioExport(horarios) {
+  if (!horarios) return '—';
+  try {
+    const hs = JSON.parse(horarios);
+    if (!Array.isArray(hs) || !hs.length) return horarios;
+    const meses = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
+    const dias = ['DOM','LUN','MAR','MIÉ','JUE','VIE','SÁB'];
+    return hs.map(h => {
+      const d = new Date(h.fecha + 'T12:00:00');
+      const label = `${dias[d.getDay()]} ${d.getDate()} ${meses[d.getMonth()]}`;
+      return `${label}: ${h.hora_inicio||'—'} – ${h.hora_fin||'—'}`;
+    }).join(' | ');
+  } catch(e) { return horarios || '—'; }
+}
+
 function exportarMatriz() {
   const datos = window._filtrados || todosRegistros;
   if (!datos.length) { toast('No hay registros para exportar', 'warn'); return; }
@@ -923,15 +938,20 @@ function exportarMatriz() {
 
   const sorted = [...datos].sort((a,b)=>(a.fecha_inicio||'')>(b.fecha_inicio||'')?1:-1);
 
-  const csv = [headers.join(','),
-    ...sorted.map((r,i) => {
+  const SEP = ';'; // Excel en configuración regional español usa ; como separador de listas
+
+  const csv = [headers.join(SEP),
+    ...sorted.map((r) => {
       const row = cols.map(c => {
-        let v = r[c] === null || r[c] === undefined ? '' : String(r[c]);
+        let v;
+        if (c === 'fecha_inicio' || c === 'fecha_fin') v = formatFecha(r[c]);
+        else if (c === 'horarios') v = formatHorarioExport(r[c]);
+        else v = (r[c] === null || r[c] === undefined) ? '' : String(r[c]);
         return '"' + v.replace(/"/g,'""') + '"';
       });
-      return row.join(',');
+      return row.join(SEP);
     })
-  ].join('\n');
+  ].join('\r\n');
 
   let nombre = 'MATRIZ_EVENTOS_DGR';
   if (desde && hasta) nombre += `_${desde}_al_${hasta}`;
