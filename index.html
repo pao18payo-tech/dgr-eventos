@@ -413,13 +413,22 @@ tbody td{padding:9px 12px;vertical-align:top}
             <option>VICTORIA DEL PORTETE</option>
           </select>
         </div>
-        <!-- Filtros fila 2: rango de fechas -->
-        <div class="search-bar" style="margin-bottom:12px;align-items:center">
+        <!-- Filtros fila 2: rango fecha inicio evento -->
+        <div class="search-bar" style="margin-bottom:6px;align-items:center">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
             <label style="font-size:12px;font-weight:700;color:var(--navy);white-space:nowrap">📅 Rango de fechas (inicio evento):</label>
             <input type="date" id="searchFechaDesde" onchange="filtrarTabla()" style="width:150px">
             <span style="font-size:12px;color:var(--gray-400)">hasta</span>
             <input type="date" id="searchFechaHasta" onchange="filtrarTabla()" style="width:150px">
+          </div>
+        </div>
+        <!-- Filtros fila 3: rango fecha validación + botones -->
+        <div class="search-bar" style="margin-bottom:12px;align-items:center">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <label style="font-size:12px;font-weight:700;color:var(--navy);white-space:nowrap">📋 Rango de fechas (validación):</label>
+            <input type="date" id="searchFechaValDesde" onchange="filtrarTabla()" style="width:150px">
+            <span style="font-size:12px;color:var(--gray-400)">hasta</span>
+            <input type="date" id="searchFechaValHasta" onchange="filtrarTabla()" style="width:150px">
             <button class="btn btn-secondary btn-sm" onclick="limpiarFiltros()">✕ Limpiar filtros</button>
           </div>
           <div style="margin-left:auto;display:flex;gap:8px">
@@ -434,6 +443,7 @@ tbody td{padding:9px 12px;vertical-align:top}
               <tr>
                 <th>#</th>
                 <th>N° Validación</th>
+                <th>Fecha Validación</th>
                 <th>Oficio GAD Parroquial</th>
                 <th>Parroquia</th>
                 <th>Lugar del Evento</th>
@@ -817,6 +827,8 @@ function limpiarFiltros() {
   document.getElementById('searchParroquia').value = '';
   document.getElementById('searchFechaDesde').value = '';
   document.getElementById('searchFechaHasta').value = '';
+  document.getElementById('searchFechaValDesde').value = '';
+  document.getElementById('searchFechaValHasta').value = '';
   filtrarTabla();
 }
 
@@ -833,6 +845,8 @@ function filtrarTabla() {
   const parr = document.getElementById('searchParroquia').value;
   const desde = document.getElementById('searchFechaDesde').value;
   const hasta = document.getElementById('searchFechaHasta').value;
+  const valDesde = document.getElementById('searchFechaValDesde').value;
+  const valHasta = document.getElementById('searchFechaValHasta').value;
 
   const filtrados = todosRegistros.filter(r => {
     const matchTxt = !txt ||
@@ -841,13 +855,17 @@ function filtrarTabla() {
       (r.tecnico||'').toLowerCase().includes(txt) ||
       (r.num_resolucion||'').toLowerCase().includes(txt) ||
       (r.gad_parroquial||'').toLowerCase().includes(txt) ||
-      (r.nombre_organizador||'').toLowerCase().includes(txt);
+      (r.nombre_organizador||'').toLowerCase().includes(txt) ||
+      formatFecha(r.fecha_validacion).toLowerCase().includes(txt);
     const matchTec = !tec || (r.tecnico||'').toUpperCase().includes(tec.toUpperCase());
     const matchParr = !parr || r.gad_parroquial === parr;
     const fi = r.fecha_inicio || '';
     const matchDesde = !desde || fi >= desde;
     const matchHasta = !hasta || fi <= hasta;
-    return matchTxt && matchTec && matchParr && matchDesde && matchHasta;
+    const fv = r.fecha_validacion || '';
+    const matchValDesde = !valDesde || fv >= valDesde;
+    const matchValHasta = !valHasta || fv <= valHasta;
+    return matchTxt && matchTec && matchParr && matchDesde && matchHasta && matchValDesde && matchValHasta;
   });
 
   filtrados.sort((a,b) => (a.num_resolucion||'') < (b.num_resolucion||'') ? 1 : -1);
@@ -869,7 +887,7 @@ function renderTabla() {
 
   const tbody = document.getElementById('tablaBody');
   if (!total) {
-    tbody.innerHTML = '<tr><td colspan="15" style="text-align:center;padding:24px;color:#94a3b8">No se encontraron registros</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="16" style="text-align:center;padding:24px;color:#94a3b8">No se encontraron registros</td></tr>';
     renderPaginacion(0, 0);
     return;
   }
@@ -878,6 +896,7 @@ function renderTabla() {
     <tr>
       <td style="text-align:center;font-weight:700;color:var(--gray-400)">${inicio + i + 1}</td>
       <td><span class="badge-num">${r.num_resolucion||'—'}</span></td>
+      <td style="white-space:nowrap">${formatFecha(r.fecha_validacion)}</td>
       <td style="font-size:11px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.oficio_gad||''}">${r.oficio_gad||'—'}</td>
       <td style="font-size:11px">${r.gad_parroquial||'—'}</td>
       <td style="font-size:11px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.lugar||''}">${r.lugar||'—'}</td>
@@ -956,8 +975,8 @@ function exportarMatriz() {
   const desde = document.getElementById('searchFechaDesde').value;
   const hasta = document.getElementById('searchFechaHasta').value;
 
-  const cols =    ['num_resolucion','oficio_gad','gad_parroquial','lugar','nombre_evento','clasificacion','aforo','fecha_inicio','fecha_fin','horarios','nombre_organizador','contacto_organizador','nombre_delegado','contacto_delegado','tecnico','observaciones'];
-  const headers = ['N° VALIDACIÓN','TRÁMITE / HOJA DE RUTA','PARROQUIA','LUGAR DEL EVENTO','NOMBRE EVENTO','CLASIFICACIÓN TIPO EVENTO','AFORO','FECHA DE INICIO','FECHA DE FIN','HORARIO','ORGANIZADOR/A','TELÉFONO','DELEGADO/A','CONTACTO DELEGADO','TÉCNICO/A DGR','OBSERVACIONES'];
+  const cols =    ['num_resolucion','oficio_gad','gad_parroquial','lugar','nombre_evento','clasificacion','aforo','fecha_validacion','fecha_inicio','fecha_fin','horarios','nombre_organizador','contacto_organizador','nombre_delegado','contacto_delegado','tecnico','observaciones'];
+  const headers = ['N° VALIDACIÓN','TRÁMITE / HOJA DE RUTA','PARROQUIA','LUGAR DEL EVENTO','NOMBRE EVENTO','CLASIFICACIÓN TIPO EVENTO','AFORO','FECHA DE VALIDACIÓN','FECHA DE INICIO','FECHA DE FIN','HORARIO','ORGANIZADOR/A','TELÉFONO','DELEGADO/A','CONTACTO DELEGADO','TÉCNICO/A DGR','OBSERVACIONES'];
 
   const sorted = [...datos].sort((a,b)=>(a.fecha_inicio||'')>(b.fecha_inicio||'')?1:-1);
 
@@ -967,7 +986,7 @@ function exportarMatriz() {
     ...sorted.map((r) => {
       const row = cols.map(c => {
         let v;
-        if (c === 'fecha_inicio' || c === 'fecha_fin') v = formatFecha(r[c]);
+        if (c === 'fecha_validacion' || c === 'fecha_inicio' || c === 'fecha_fin') v = formatFecha(r[c]);
         else if (c === 'horarios') v = formatHorarioExport(r[c]);
         else v = (r[c] === null || r[c] === undefined) ? '' : String(r[c]);
         return '"' + v.replace(/"/g,'""') + '"';
@@ -1367,10 +1386,9 @@ ${r.observaciones ? `<p class="rec-p"><strong>Observaciones adicionales:</strong
 <\/script>
 </body></html>`;
 
-  const w = window.open('', '_blank', 'width=900,height=700');
-  w.document.open();
-  w.document.write(html);
-  w.document.close();
+  const blob = new Blob([html], {type: 'text/html;charset=utf-8'});
+  const blobUrl = URL.createObjectURL(blob);
+  window.open(blobUrl, '_blank', 'width=900,height=700');
 }
 
 // ══════════════════════════════════════════
