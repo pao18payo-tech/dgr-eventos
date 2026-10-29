@@ -72,7 +72,25 @@ body{font-family:Arial,sans-serif;background:#eef2f7;color:var(--gray-800);min-h
 .form-section-title{grid-column:1/-1;font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:.8px;padding:8px 0 4px;border-bottom:1.5px solid var(--sky-mid);display:flex;align-items:center;gap:8px}
 
 /* Firma canvas */
-.horario-fila{display:grid;grid-template-columns:auto 1fr 1fr auto;gap:8px;align-items:center;background:var(--sky);border-radius:7px;padding:8px 12px}
+.horario-fila{display:grid;grid-template-columns:auto 1fr 1fr 1fr auto;gap:8px;align-items:center;background:var(--sky);border-radius:7px;padding:8px 12px}
+.horario-fila input[type=number]{border:1.5px solid var(--gray-200);border-radius:6px;padding:6px 10px;font-size:13px;font-family:Arial,sans-serif;background:#fff;width:100%}
+.horario-fila input[type=number]:focus{outline:none;border-color:var(--navy-light)}
+.aforo-modo{display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:#fff;border:1.5px solid var(--gray-200);border-radius:7px;padding:8px 12px;margin-top:6px}
+.aforo-modo label{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--navy);cursor:pointer;text-transform:none;letter-spacing:0}
+.aforo-modo label{white-space:nowrap}
+.form-group .aforo-modo input[type=checkbox]{width:16px;height:16px;padding:0;margin:0;accent-color:var(--navy);cursor:pointer}
+.form-group .aforo-modo input[type=number]{border:1.5px solid var(--gray-200);border-radius:6px;padding:6px 10px;font-size:13px;width:140px}
+#horarios-container.aforo-unico .col-aforo{display:none}
+#horarios-container.aforo-unico .horario-fila{grid-template-columns:auto 1fr 1fr auto}
+.aforo-total{font-size:12px;color:var(--navy);font-weight:700;margin-top:4px;text-align:right}
+
+/* Selector de año de gestión */
+.year-bar{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.year-bar .y-label{font-size:11px;font-weight:700;color:var(--gray-600);text-transform:uppercase;letter-spacing:.5px}
+.year-btn{padding:7px 18px;border:1.5px solid var(--gray-200);border-radius:20px;background:var(--white);cursor:pointer;font-size:13px;font-weight:700;color:var(--gray-600);font-family:Arial,sans-serif;transition:all .15s}
+.year-btn:hover:not(.active){background:var(--gray-100)}
+.year-btn.active{background:var(--navy);border-color:var(--navy);color:#fff;box-shadow:0 2px 6px rgba(31,78,121,.3)}
+.year-btn .y-tag{font-size:10px;font-weight:600;opacity:.8;margin-left:4px}
 .horario-fila .dia-label{font-size:12px;font-weight:700;color:var(--navy);white-space:nowrap;min-width:110px}
 .horario-fila input[type=time]{border:1.5px solid var(--gray-200);border-radius:6px;padding:6px 10px;font-size:13px;font-family:Arial,sans-serif;background:#fff;width:100%}
 .horario-fila input[type=time]:focus{outline:none;border-color:var(--navy-light)}
@@ -156,6 +174,8 @@ tbody td{padding:9px 12px;vertical-align:top}
   .form-group.full{grid-column:1}
   .stats-row{grid-template-columns:1fr 1fr}
   .tab-btn span.label{display:none}
+  .horario-fila{grid-template-columns:1fr 1fr;}
+  .horario-fila .dia-label{grid-column:1 / -1}
 }
 </style>
 </head>
@@ -182,6 +202,9 @@ tbody td{padding:9px 12px;vertical-align:top}
 
 <div class="app-body">
 
+  <!-- AÑO DE GESTIÓN (cada año tiene su propia numeración y registros) -->
+  <div class="year-bar" id="yearBar"></div>
+
   <!-- TABS -->
   <div class="tab-bar">
     <button class="tab-btn active" onclick="showTab('registro')" id="tab-registro">
@@ -204,7 +227,7 @@ tbody td{padding:9px 12px;vertical-align:top}
     <div class="num-display" id="numDisplay">
       <div class="num-icon">📋</div>
       <div>
-        <div class="num-label">Número de Validación (asignado automáticamente)</div>
+        <div class="num-label">Número de Validación (asignado automáticamente) · Gestión <span id="numAnio"></span></div>
         <div class="num-value" id="numValue">Cargando...</div>
       </div>
     </div>
@@ -266,21 +289,26 @@ tbody td{padding:9px 12px;vertical-align:top}
           <!-- HORARIOS POR DÍA -->
           <div class="form-group full" id="horarios-section" style="display:none">
             <label style="display:flex;align-items:center;gap:8px">
-              🕐 Horario por día
+              🕐 Horario y aforo por día *
               <span style="font-size:10px;font-weight:400;color:var(--gray-400)">(se genera automáticamente según las fechas)</span>
             </label>
-            <div id="horarios-container" style="display:flex;flex-direction:column;gap:8px;margin-top:6px"></div>
+            <div class="aforo-modo">
+              <label><input type="checkbox" id="f_aforo_mismo" checked onchange="toggleAforoMismo()"> Mismo aforo todos los días</label>
+              <span id="aforoUnicoBox" style="display:flex;align-items:center;gap:6px">
+                <span style="font-size:11px;font-weight:700;color:var(--navy)">AFORO *</span>
+                <input type="number" id="f_aforo_unico" min="1" placeholder="200" oninput="actualizarResumenAforo()">
+              </span>
+              <span id="aforoVariableHint" style="display:none;font-size:11px;color:var(--gray-400)">Ingresa el aforo en cada día</span>
+            </div>
+            <div id="horarios-container" class="aforo-unico" style="display:flex;flex-direction:column;gap:8px;margin-top:6px"></div>
+            <div class="aforo-total" id="aforoResumen"></div>
           </div>
 
           <div class="form-group full">
             <label>Lugar del Evento *</label>
             <input type="text" id="f_lugar" placeholder="Ej: PLAZA CENTRAL CUMBE">
           </div>
-          <div class="form-group">
-            <label>Aforo *</label>
-            <input type="number" id="f_aforo" placeholder="200" min="1">
-          </div>
-          <div class="form-group">
+          <div class="form-group full">
             <label>Fecha de Validación *</label>
             <input type="date" id="f_fecha_validacion">
           </div>
@@ -344,6 +372,8 @@ tbody td{padding:9px 12px;vertical-align:top}
               <option value="ELTIN PESANTEZ">Eltin Pesantez</option>
               <option value="PABLO ORELLANA">Pablo Orellana</option>
               <option value="JOHNNY ALVARRACIN">Johnny Alvarracín</option>
+              <option value="ESTEFANIA OCHOA">Estefanía Ochoa</option>
+              <option value="SOFIA ABAD">Sofía Abad</option>
             </select>
           </div>
           <div class="form-group full">
@@ -380,7 +410,7 @@ tbody td{padding:9px 12px;vertical-align:top}
   <div id="tab-content-consulta" style="display:none">
 
     <div class="stats-row" id="statsRow">
-      <div class="stat-card"><div class="s-label">Total Registros</div><div class="s-value" id="st-total">—</div><div class="s-sub">año 2026</div></div>
+      <div class="stat-card"><div class="s-label">Total Registros</div><div class="s-value" id="st-total">—</div><div class="s-sub" id="st-anio">año 2026</div></div>
       <div class="stat-card"><div class="s-label">Aforo Acumulado</div><div class="s-value" id="st-aforo">—</div><div class="s-sub">personas validadas</div></div>
       <div class="stat-card"><div class="s-label">Este Mes</div><div class="s-value" id="st-mes">—</div><div class="s-sub">validaciones</div></div>
       <div class="stat-card"><div class="s-label">Parroquias</div><div class="s-value" id="st-parr">—</div><div class="s-sub">distintas</div></div>
@@ -401,6 +431,8 @@ tbody td{padding:9px 12px;vertical-align:top}
             <option value="ELTIN PESANTEZ">Eltin Pesantez</option>
             <option value="PABLO ORELLANA">Pablo Orellana</option>
             <option value="JOHNNY ALVARRACIN">Johnny Alvarracín</option>
+            <option value="ESTEFANIA OCHOA">Estefanía Ochoa</option>
+            <option value="SOFIA ABAD">Sofía Abad</option>
           </select>
           <select id="searchParroquia" onchange="filtrarTabla()">
             <option value="">Todas las parroquias</option>
@@ -479,7 +511,7 @@ tbody td{padding:9px 12px;vertical-align:top}
       <div class="card-body">
         <p style="font-size:13px;color:#475569;margin-bottom:16px">
           Sube un archivo CSV exportado desde Google Sheets para migrar los registros históricos. 
-          Las columnas deben coincidir con el formato de la matriz de Validaciones 2026.
+          Las columnas deben coincidir con el formato de la matriz de Validaciones. Los registros sin número se numerarán en el año de gestión activo (<strong id="importAnio">2026</strong>).
         </p>
 
         <div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:#92400e">
@@ -577,11 +609,15 @@ function generarFilasHorario() {
   const ff = document.getElementById('f_fecha_fin').value;
   const sec = document.getElementById('horarios-section');
   const cont = document.getElementById('horarios-container');
-  if (!fi) { sec.style.display='none'; cont.innerHTML=''; return; }
+  if (!fi) { sec.style.display='none'; cont.innerHTML=''; actualizarResumenAforo(); return; }
   const existentes = {};
   cont.querySelectorAll('.horario-fila').forEach(fila => {
     const fecha = fila.dataset.fecha;
-    existentes[fecha] = {hi: fila.querySelector('.h-inicio').value, hf: fila.querySelector('.h-fin').value};
+    existentes[fecha] = {
+      hi: fila.querySelector('.h-inicio').value,
+      hf: fila.querySelector('.h-fin').value,
+      af: fila.querySelector('.h-aforo').value
+    };
   });
   const inicio = new Date(fi + 'T12:00:00');
   const fin = ff ? new Date(ff + 'T12:00:00') : inicio;
@@ -596,10 +632,12 @@ function generarFilasHorario() {
       <div class="dia-label">📅 ${label}</div>
       <div><div style="font-size:10px;font-weight:700;color:var(--navy);margin-bottom:3px">HORA INICIO</div><input type="time" class="h-inicio" value="${prev.hi||''}"></div>
       <div><div style="font-size:10px;font-weight:700;color:var(--navy);margin-bottom:3px">HORA FIN</div><input type="time" class="h-fin" value="${prev.hf||''}"></div>
+      <div class="col-aforo"><div style="font-size:10px;font-weight:700;color:var(--navy);margin-bottom:3px">AFORO *</div><input type="number" class="h-aforo" min="1" placeholder="200" value="${prev.af||''}" oninput="actualizarResumenAforo()"></div>
       <button onclick="eliminarFilaHorario('${key}')" title="Eliminar este día" style="background:#fee2e2;border:1px solid #fecaca;color:#dc2626;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:14px;align-self:center;line-height:1;flex-shrink:0">🗑</button>
     </div>`;
   }).join('');
   sec.style.display = 'block';
+  actualizarResumenAforo();
 }
 
 function eliminarFilaHorario(fecha) {
@@ -607,8 +645,56 @@ function eliminarFilaHorario(fecha) {
   if (fila) {
     fila.style.transition = 'opacity .2s';
     fila.style.opacity = '0';
-    setTimeout(() => fila.remove(), 200);
+    setTimeout(() => { fila.remove(); actualizarResumenAforo(); }, 200);
   }
+}
+
+function aforoMismoActivo() {
+  return document.getElementById('f_aforo_mismo').checked;
+}
+
+function toggleAforoMismo() {
+  const mismo = aforoMismoActivo();
+  const unico = document.getElementById('f_aforo_unico');
+  const inputs = document.querySelectorAll('#horarios-container .h-aforo');
+  if (mismo) {
+    // Al volver a "mismo aforo": se toma el primer valor ingresado por día
+    if (!unico.value) { const v = [...inputs].map(i=>i.value).find(Boolean); if (v) unico.value = v; }
+  } else {
+    // Al pasar a "por día": se copia el aforo único a los días vacíos
+    if (unico.value) inputs.forEach(i => { if (!i.value) i.value = unico.value; });
+  }
+  document.getElementById('horarios-container').classList.toggle('aforo-unico', mismo);
+  document.getElementById('aforoUnicoBox').style.display = mismo ? 'flex' : 'none';
+  document.getElementById('aforoVariableHint').style.display = mismo ? 'none' : 'inline';
+  actualizarResumenAforo();
+}
+
+// Si está activo "mismo aforo", replica el valor en todas las filas antes de guardar
+function sincronizarAforoUnico() {
+  if (!aforoMismoActivo()) return;
+  const v = document.getElementById('f_aforo_unico').value;
+  document.querySelectorAll('#horarios-container .h-aforo').forEach(i => i.value = v);
+}
+
+// Aforo máximo de los días registrados en el formulario
+function aforoMaximoFormulario() {
+  if (aforoMismoActivo()) return parseInt(document.getElementById('f_aforo_unico').value) || 0;
+  let max = 0;
+  document.querySelectorAll('#horarios-container .h-aforo').forEach(inp => {
+    const v = parseInt(inp.value);
+    if (v > max) max = v;
+  });
+  return max;
+}
+
+function actualizarResumenAforo() {
+  const el = document.getElementById('aforoResumen');
+  if (!el) return;
+  const filas = document.querySelectorAll('#horarios-container .horario-fila');
+  if (filas.length <= 1 || aforoMismoActivo()) { el.textContent = ''; return; }
+  const max = aforoMaximoFormulario();
+  el.textContent = max ? `Aforo máximo del evento: ${max.toLocaleString('es-EC')} personas` : '';
 }
 
 function obtenerHorarios() {
@@ -618,15 +704,135 @@ function obtenerHorarios() {
   filas.forEach(fila => {
     const hi = fila.querySelector('.h-inicio').value;
     const hf = fila.querySelector('.h-fin').value;
-    if (hi||hf) horarios.push({fecha: fila.dataset.fecha, hora_inicio: hi||null, hora_fin: hf||null});
+    const af = parseInt(fila.querySelector('.h-aforo').value) || null;
+    if (hi||hf||af) horarios.push({fecha: fila.dataset.fecha, hora_inicio: hi||null, hora_fin: hf||null, aforo: af});
   });
   return horarios.length ? JSON.stringify(horarios) : null;
+}
+
+// ── Utilidades de lectura de horarios/aforo de un registro ──
+function parseHorarios(h) {
+  if (!h) return null;
+  try {
+    const hs = JSON.parse(h);
+    return Array.isArray(hs) && hs.length ? hs : null;
+  } catch(e) { return null; }
+}
+
+// ¿El registro tiene aforos distintos por día?
+function aforoVariable(r) {
+  const hs = parseHorarios(r.horarios);
+  if (!hs) return false;
+  const vals = [...new Set(hs.map(h => h.aforo).filter(v => v))];
+  return vals.length > 1;
+}
+
+// Etiqueta compacta de una lista de fechas: agrupa días consecutivos en rangos
+// Ej: [1,2,3 FEB, 5 FEB] → "LUN 1 – MIÉ 3 FEB, VIE 5 FEB"
+function etiquetaDias(fechas) {
+  const lab = f => { const d = new Date(f+'T12:00:00'); return `${DIAS_ES[d.getDay()]} ${d.getDate()} ${MESES_CORTO_H[d.getMonth()]}`; };
+  const ord = [...fechas].sort();
+  const tramos = [];
+  ord.forEach(f => {
+    const ult = tramos[tramos.length-1];
+    if (ult) {
+      const sig = new Date(ult.fin+'T12:00:00'); sig.setDate(sig.getDate()+1);
+      if (sig.toISOString().slice(0,10) === f) { ult.fin = f; return; }
+    }
+    tramos.push({ini:f, fin:f});
+  });
+  const labCorto = f => { const d = new Date(f+'T12:00:00'); return `${DIAS_ES[d.getDay()]} ${d.getDate()}`; };
+  return tramos.map(t => {
+    if (t.ini === t.fin) return lab(t.ini);
+    const mismoMes = t.ini.slice(0,7) === t.fin.slice(0,7);
+    return `${mismoMes ? labCorto(t.ini) : lab(t.ini)} – ${lab(t.fin)}`;
+  }).join(', ');
+}
+
+// Agrupa los días por aforo: cada valor de aforo aparece una sola vez
+function gruposAforo(r) {
+  const hs = parseHorarios(r.horarios);
+  if (!hs) return [];
+  const mapa = new Map();
+  hs.filter(h => h.aforo).sort((a,b)=>a.fecha<b.fecha?-1:1).forEach(h => {
+    if (!mapa.has(h.aforo)) mapa.set(h.aforo, []);
+    mapa.get(h.aforo).push(h.fecha);
+  });
+  return [...mapa.entries()].map(([aforo, fechas]) => ({aforo, fechas, etiqueta: etiquetaDias(fechas)}));
+}
+
+// Texto de aforo: valor único si es igual todos los días; si varía, agrupado por valor
+function textoAforo(r, sep = ' | ') {
+  if (aforoVariable(r)) {
+    return gruposAforo(r).map(g => `${g.etiqueta}: ${g.aforo.toLocaleString('es-EC')}`).join(sep);
+  }
+  return r.aforo ? r.aforo.toLocaleString('es-EC') : '—';
+}
+
+// ══════════════════════════════════════════
+// AÑO DE GESTIÓN
+// Cada año tiene su propia numeración (DGR-RES-0001-AAAA) y su propio
+// listado. Desde octubre se habilita automáticamente el año siguiente.
+// ══════════════════════════════════════════
+const ANIO_INICIAL = 2026;
+let anioActivo = new Date().getFullYear();
+
+function aniosDisponibles() {
+  const hoy = new Date();
+  const ultimo = Math.max(2027, hoy.getMonth() >= 9 ? hoy.getFullYear() + 1 : hoy.getFullYear());
+  const lista = [];
+  for (let y = ANIO_INICIAL; y <= ultimo; y++) lista.push(y);
+  return lista;
+}
+
+// Año de un registro: sufijo del N° de validación; si no lo tiene, año de la fecha de validación
+function anioDeRegistro(r) {
+  const m = (r.num_resolucion||'').match(/-(\d{4})\s*$/);
+  if (m) return parseInt(m[1]);
+  if (r.fecha_validacion) return parseInt(r.fecha_validacion.slice(0,4));
+  return null;
+}
+
+function renderYearBar() {
+  const actual = new Date().getFullYear();
+  const bar = document.getElementById('yearBar');
+  bar.innerHTML = '<span class="y-label">📆 Año de gestión:</span>' + aniosDisponibles().map(y =>
+    `<button class="year-btn ${y===anioActivo?'active':''}" onclick="cambiarAnio(${y})">${y}${y===actual?'<span class="y-tag">(actual)</span>':''}</button>`
+  ).join('');
+  document.getElementById('numAnio').textContent = anioActivo;
+  document.getElementById('st-anio').textContent = 'año ' + anioActivo;
+  const ia = document.getElementById('importAnio');
+  if (ia) ia.textContent = anioActivo;
+}
+
+async function cambiarAnio(y) {
+  if (y === anioActivo) return;
+  if (editandoId) {
+    if (!confirm('Hay una edición en curso. ¿Descartar los cambios y cambiar de año?')) return;
+    editandoId = null;
+    limpiarFormulario();
+    document.getElementById('btnGuardar').textContent = '💾 Guardar Validación';
+    document.getElementById('btnCancelarEdicion').style.display = 'none';
+  }
+  anioActivo = y;
+  try { localStorage.setItem('dgr_anio_activo', String(y)); } catch(e) {}
+  renderYearBar();
+  document.getElementById('numValue').textContent = 'Cargando...';
+  await cargarProximoNumero();
+  await cargarRegistros();
+  toast(`Trabajando en la gestión ${y}`, 'info');
 }
 
 // ══════════════════════════════════════════
 // INICIALIZACIÓN
 // ══════════════════════════════════════════
 window.addEventListener('load', async () => {
+  try {
+    const guardado = parseInt(localStorage.getItem('dgr_anio_activo'));
+    if (guardado && aniosDisponibles().includes(guardado)) anioActivo = guardado;
+  } catch(e) {}
+  if (!aniosDisponibles().includes(anioActivo)) anioActivo = new Date().getFullYear();
+  renderYearBar();
   document.getElementById('f_fecha_validacion').valueAsDate = new Date();
   await verificarConexion();
   await cargarProximoNumero();
@@ -662,21 +868,17 @@ async function verificarConexion() {
 // ══════════════════════════════════════════
 async function cargarProximoNumero() {
   try {
-    // Extrae el número más alto del campo num_resolucion (ej: DGR-RES-0116-2026 → 116)
-    const data = await supaFetch(TABLE + '?select=num_resolucion&order=num_resolucion.desc&limit=50');
-    if (data && data.length > 0) {
-      let maxNum = 0;
-      for (const row of data) {
-        const match = (row.num_resolucion||'').match(/DGR-RES-(\d+)-\d{4}/);
-        if (match) {
-          const n = parseInt(match[1]);
-          if (n > maxNum) maxNum = n;
-        }
+    // Máximo correlativo SOLO del año activo (ej: DGR-RES-0116-2026 → 116). Cada año inicia en 0001.
+    const data = await supaFetch(TABLE + '?select=num_resolucion&num_resolucion=like.' + encodeURIComponent('*-' + anioActivo));
+    let maxNum = 0;
+    for (const row of (data||[])) {
+      const match = (row.num_resolucion||'').match(/DGR-RES-(\d+)-(\d{4})/);
+      if (match && parseInt(match[2]) === anioActivo) {
+        const n = parseInt(match[1]);
+        if (n > maxNum) maxNum = n;
       }
-      proximoNumero = maxNum + 1;
-    } else {
-      proximoNumero = 1;
     }
+    proximoNumero = maxNum + 1;
     actualizarDisplayNumero();
   } catch(e) {
     toast('Error al cargar numeración: ' + e.message, 'err');
@@ -684,15 +886,12 @@ async function cargarProximoNumero() {
 }
 
 function actualizarDisplayNumero() {
-  const num = String(proximoNumero).padStart(4, '0');
-  const año = new Date().getFullYear();
-  document.getElementById('numValue').textContent = `DGR-RES-${num}-${año}`;
+  document.getElementById('numValue').textContent = getNumeroValidacion();
 }
 
 function getNumeroValidacion() {
   const num = String(proximoNumero).padStart(4, '0');
-  const año = new Date().getFullYear();
-  return `DGR-RES-${num}-${año}`;
+  return `DGR-RES-${num}-${anioActivo}`;
 }
 
 // ══════════════════════════════════════════
@@ -704,7 +903,6 @@ async function guardarRegistro() {
     nombre_evento: document.getElementById('f_nombre_evento').value.trim(),
     fecha_inicio: document.getElementById('f_fecha_inicio').value,
     lugar: document.getElementById('f_lugar').value.trim(),
-    aforo: document.getElementById('f_aforo').value,
     tecnico: document.getElementById('f_tecnico').value,
     nombre_organizador: document.getElementById('f_org_nombre').value.trim(),
     contacto_organizador: document.getElementById('f_org_contacto').value.trim(),
@@ -713,6 +911,22 @@ async function guardarRegistro() {
   const faltantes = Object.entries(req).filter(([k,v])=>!v).map(([k])=>k);
   if (faltantes.length) {
     toast('Completa los campos obligatorios (*)', 'warn');
+    return;
+  }
+
+  // Aforo obligatorio (único o en cada día del evento)
+  if (aforoMismoActivo() && !(parseInt(document.getElementById('f_aforo_unico').value) > 0)) {
+    toast('Ingresa el aforo del evento', 'warn');
+    document.getElementById('f_aforo_unico').focus();
+    return;
+  }
+  sincronizarAforoUnico();
+  const filasDia = document.querySelectorAll('#horarios-container .horario-fila');
+  if (!filasDia.length) { toast('Registra al menos un día con su aforo', 'warn'); return; }
+  const diaSinAforo = [...filasDia].find(f => !(parseInt(f.querySelector('.h-aforo').value) > 0));
+  if (diaSinAforo) {
+    toast('Falta el aforo de: ' + diaSinAforo.querySelector('.dia-label').textContent.replace('📅','').trim(), 'warn');
+    diaSinAforo.querySelector('.h-aforo').focus();
     return;
   }
 
@@ -728,7 +942,7 @@ async function guardarRegistro() {
     fecha_inicio: req.fecha_inicio,
     fecha_fin: document.getElementById('f_fecha_fin').value || null,
     lugar: req.lugar.toUpperCase(),
-    aforo: parseInt(req.aforo),
+    aforo: aforoMaximoFormulario(), // aforo máximo; el detalle por día va en horarios
     fecha_validacion: req.fecha_validacion,
     gad_parroquial: document.getElementById('f_parroquia').value || null,
     oficio_gad: document.getElementById('f_oficio_gad').value.trim() || null,
@@ -798,7 +1012,7 @@ async function guardarRegistro() {
 async function cargarRegistros() {
   try {
     const data = await supaFetch(TABLE + '?select=*&order=num_resolucion.desc');
-    todosRegistros = data || [];
+    todosRegistros = (data || []).filter(r => anioDeRegistro(r) === anioActivo);
     actualizarStats();
     filtrarTabla();
   } catch(e) {
@@ -902,7 +1116,7 @@ function renderTabla() {
       <td style="font-size:11px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.lugar||''}">${r.lugar||'—'}</td>
       <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600" title="${r.nombre_evento||''}">${r.nombre_evento||'—'}</td>
       <td style="font-size:10px;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.clasificacion||''}">${r.clasificacion||'—'}</td>
-      <td style="text-align:right">${r.aforo ? r.aforo.toLocaleString('es-EC') : '—'}</td>
+      <td style="text-align:right;${aforoVariable(r)?'font-size:10px;white-space:nowrap':''}">${aforoVariable(r) ? textoAforo(r, '<br>') : (r.aforo ? r.aforo.toLocaleString('es-EC') : '—')}</td>
       <td style="white-space:nowrap">${formatFecha(r.fecha_inicio)}</td>
       <td style="white-space:nowrap">${formatFecha(r.fecha_fin)}</td>
       <td style="font-size:10px;min-width:120px">${formatHorarioTabla(r.horarios)}</td>
@@ -988,6 +1202,7 @@ function exportarMatriz() {
         let v;
         if (c === 'fecha_validacion' || c === 'fecha_inicio' || c === 'fecha_fin') v = formatFecha(r[c]);
         else if (c === 'horarios') v = formatHorarioExport(r[c]);
+        else if (c === 'aforo') v = aforoVariable(r) ? textoAforo(r) : (r.aforo ? String(r.aforo) : '');
         else v = (r[c] === null || r[c] === undefined) ? '' : String(r[c]);
         return '"' + v.replace(/"/g,'""') + '"';
       });
@@ -995,7 +1210,7 @@ function exportarMatriz() {
     })
   ].join('\r\n');
 
-  let nombre = 'MATRIZ_EVENTOS_DGR';
+  let nombre = 'MATRIZ_EVENTOS_DGR_' + anioActivo;
   if (desde && hasta) nombre += `_${desde}_al_${hasta}`;
   else if (desde) nombre += `_desde_${desde}`;
   else if (hasta) nombre += `_hasta_${hasta}`;
@@ -1044,7 +1259,7 @@ function verDetalle(id) {
       ${campo('Nombre del Evento', r.nombre_evento)}
       ${campo('Lugar', r.lugar)}
       ${campo('Parroquia', r.gad_parroquial)}
-      ${campo('Aforo', r.aforo ? r.aforo.toLocaleString('es-EC') + ' personas' : '—')}
+      ${campo(aforoVariable(r) ? 'Aforo por día' : 'Aforo', aforoVariable(r) ? textoAforo(r, '<br>') : (r.aforo ? r.aforo.toLocaleString('es-EC') + ' personas' : '—'))}
       ${campo('Fecha Inicio', formatFecha(r.fecha_inicio))}
       ${campo('Fecha Fin', formatFecha(r.fecha_fin))}
       ${campo('Organizador/a', r.nombre_organizador)}
@@ -1095,7 +1310,6 @@ function editarRegistro(id) {
   document.getElementById('f_fecha_inicio').value = r.fecha_inicio || '';
   document.getElementById('f_fecha_fin').value = r.fecha_fin || '';
   document.getElementById('f_lugar').value = r.lugar || '';
-  document.getElementById('f_aforo').value = r.aforo || '';
   document.getElementById('f_fecha_validacion').value = r.fecha_validacion || '';
   document.getElementById('f_clasificacion').value = r.clasificacion || '';
   document.getElementById('f_oficio_gad').value = r.oficio_gad || '';
@@ -1120,11 +1334,20 @@ function editarRegistro(id) {
           if (fila) {
             fila.querySelector('.h-inicio').value = h.hora_inicio || '';
             fila.querySelector('.h-fin').value = h.hora_fin || '';
+            if (h.aforo) fila.querySelector('.h-aforo').value = h.aforo;
           }
         });
       }
     } catch(e) {}
   }
+  // Registros antiguos (aforo único): se replica el aforo en los días que no lo tengan
+  if (r.aforo) {
+    document.querySelectorAll('#horarios-container .h-aforo').forEach(inp => { if (!inp.value) inp.value = r.aforo; });
+  }
+  const variable = aforoVariable(r);
+  document.getElementById('f_aforo_mismo').checked = !variable;
+  document.getElementById('f_aforo_unico').value = variable ? '' : (r.aforo || '');
+  toggleAforoMismo();
 
   // Cambiar número mostrado y estado de botones
   document.getElementById('numValue').textContent = r.num_resolucion || '—';
@@ -1243,7 +1466,7 @@ function generarPDF(r) {
   CONTENCIÓN, MITIGACIÓN Y CONTROL DENTRO DEL CANTÓN CUENCA PARA LA EMERGENCIA SANITARIA DE LA COVID-19
 </div>
 
-<div class="num-res">${r.num_resolucion||'DGR-RES-XXXX-2026'}</div>
+<div class="num-res">${r.num_resolucion||'DGR-RES-XXXX-' + anioActivo}</div>
 
 <p class="intro">
   La Dirección de Gestión de Riesgos del cantón Cuenca en uso de sus atribuciones conferidas en la normativa aplicable,
@@ -1287,7 +1510,7 @@ function generarPDF(r) {
     <td class="lbl">Fecha de Validación:</td>
     <td>${fmtLargo(r.fecha_validacion)}</td>
     <td class="lbl2">Aforo:</td>
-    <td style="font-weight:700">${r.aforo ? r.aforo.toLocaleString('es-EC') : '—'}</td>
+    <td style="font-weight:700;${aforoVariable(r)?'font-size:6.5pt':''}">${aforoVariable(r) ? textoAforo(r, '<br>') : (r.aforo ? r.aforo.toLocaleString('es-EC') : '—')}</td>
   </tr>
   <tr>
     <td class="lbl">Clasificación del Evento:</td>
@@ -1492,11 +1715,11 @@ async function confirmarImport() {
   };
 
   // Obtener num max actual
-  const dataExist = await supaFetch(TABLE + '?select=num_resolucion&order=num_resolucion.desc&limit=50').catch(()=>[]);
+  const dataExist = await supaFetch(TABLE + '?select=num_resolucion&num_resolucion=like.' + encodeURIComponent('*-' + anioActivo)).catch(()=>[]);
   let maxNum = 0;
   for (const row of (dataExist||[])) {
-    const m = (row.num_resolucion||'').match(/DGR-RES-(\d+)-\d{4}/);
-    if (m && parseInt(m[1]) > maxNum) maxNum = parseInt(m[1]);
+    const m = (row.num_resolucion||'').match(/DGR-RES-(\d+)-(\d{4})/);
+    if (m && parseInt(m[2]) === anioActivo && parseInt(m[1]) > maxNum) maxNum = parseInt(m[1]);
   }
 
   // Construir payloads
@@ -1509,17 +1732,18 @@ async function confirmarImport() {
     const matchNum = valStr.match(/(\d{1,4})/);
     if (matchNum) numVal = parseInt(matchNum[1]);
     else { maxNum++; numVal = maxNum; }
-    const resolucion = valStr || `DGR-RES-${String(numVal).padStart(4,'0')}-2026`;
+    const resolucion = valStr || `DGR-RES-${String(numVal).padStart(4,'0')}-${anioActivo}`;
 
     const fechaIni = parseDate(getColRow(row,'Fecha Inicio','FECHA DE INICIO','fechainicio'));
     const horarioTxt = getColRow(row,'Horario','HORARIO','horarios');
+    const aforoImp = parseInt(getColRow(row,'Aforo','AFORO','aforo'))||null;
     let horariosJson = null;
     if (horarioTxt && fechaIni) {
       const partes = horarioTxt.split(/\n|;/).map(p=>p.trim()).filter(Boolean);
       const hs = [];
       partes.forEach(p => {
         const m = p.match(/(\d{1,2})[Hh:]?(\d{0,2})\s*[Aa]\s*(\d{1,2})[Hh:]?(\d{0,2})/);
-        if (m) hs.push({fecha:fechaIni,hora_inicio:`${String(m[1]).padStart(2,'0')}:${String(m[2]||'00').padStart(2,'0')}`,hora_fin:`${String(m[3]).padStart(2,'0')}:${String(m[4]||'00').padStart(2,'0')}`});
+        if (m) hs.push({fecha:fechaIni,hora_inicio:`${String(m[1]).padStart(2,'0')}:${String(m[2]||'00').padStart(2,'0')}`,hora_fin:`${String(m[3]).padStart(2,'0')}:${String(m[4]||'00').padStart(2,'0')}`,aforo:aforoImp});
       });
       horariosJson = hs.length ? JSON.stringify(hs) : horarioTxt;
     }
@@ -1532,7 +1756,7 @@ async function confirmarImport() {
       lugar: (getColRow(row,'Lugar del Evento','LUGAR DEL EVENTO','lugar')||'').toUpperCase(),
       nombre_evento: (getColRow(row,'Nombre Evento','NOMBRE EVENTO','nombre_evento')||'').toUpperCase(),
       clasificacion: getColRow(row,'Clasificacion','CLASIFICACION TIPO EVENTO','clasificacion'),
-      aforo: parseInt(getColRow(row,'Aforo','AFORO','aforo'))||null,
+      aforo: aforoImp,
       fecha_inicio: fechaIni,
       fecha_fin: parseDate(getColRow(row,'Fecha Fin','FECHA DE FIN','fechafin')),
       horarios: horariosJson,
@@ -1614,7 +1838,7 @@ function showTab(tab) {
 // ══════════════════════════════════════════
 function limpiarFormulario() {
   ['f_parroquia','f_nombre_evento','f_fecha_inicio','f_fecha_fin','f_lugar',
-   'f_aforo','f_clasificacion','f_oficio_gad','f_org_nombre','f_org_contacto',
+   'f_clasificacion','f_oficio_gad','f_org_nombre','f_org_contacto',
    'f_del_nombre','f_del_contacto','f_tecnico','f_observaciones'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
@@ -1622,6 +1846,9 @@ function limpiarFormulario() {
   document.getElementById('f_fecha_validacion').valueAsDate = new Date();
   document.getElementById('horarios-section').style.display = 'none';
   document.getElementById('horarios-container').innerHTML = '';
+  document.getElementById('f_aforo_mismo').checked = true;
+  document.getElementById('f_aforo_unico').value = '';
+  toggleAforoMismo();
   const radio = document.querySelector('input[name="quien_firma"][value="ORGANIZADOR/A"]');
   if (radio) radio.checked = true;
   if (editandoId) {
@@ -1661,6 +1888,9 @@ function parseDate(str) {
   return null;
 }
 
+</script>
+</body>
+</html>
 </script>
 </body>
 </html>
