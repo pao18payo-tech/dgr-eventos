@@ -168,6 +168,34 @@ tbody td{padding:9px 12px;vertical-align:top}
 .import-area:hover{border-color:var(--navy-light);background:var(--sky)}
 .import-area p{color:var(--gray-600);font-size:13px;margin-top:6px}
 
+/* Sesión técnico / administrador */
+.header-actions{margin-left:auto;display:flex;align-items:center;gap:14px}
+.header-actions .conn-status{margin-left:0}
+.btn-admin{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:7px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:Arial,sans-serif;display:flex;align-items:center;gap:6px}
+.btn-admin:hover{background:rgba(255,255,255,.22)}
+.btn-admin.on{background:#fbbf24;color:#1e293b;border-color:#fbbf24}
+.user-box{display:none;align-items:center;gap:8px;font-size:12px}
+.user-box .u-nombre{font-weight:700}
+.user-box .u-rol{font-size:10px;background:rgba(255,255,255,.18);border-radius:10px;padding:2px 8px;text-transform:uppercase;letter-spacing:.4px}
+.user-box .u-rol.admin{background:#fbbf24;color:#1e293b}
+/* Pantalla de inicio de sesión */
+.login-screen{min-height:calc(100vh - 64px);display:flex;align-items:center;justify-content:center;padding:24px}
+.login-card{background:#fff;border:1px solid var(--gray-200);border-radius:14px;box-shadow:var(--shadow-lg);width:100%;max-width:380px;overflow:hidden}
+.login-card .lc-head{background:var(--navy);color:#fff;padding:22px 24px}
+.login-card .lc-head h2{font-size:16px}
+.login-card .lc-head p{font-size:11px;opacity:.75;margin-top:4px}
+.login-card .lc-body{padding:22px 24px;display:flex;flex-direction:column;gap:14px}
+.login-error{display:none;background:var(--red-bg);color:var(--red);border-radius:7px;padding:9px 12px;font-size:12px;font-weight:600}
+.login-error.info{background:var(--amber-bg);color:#92400e}
+.login-hint{font-size:11px;color:var(--gray-400);line-height:1.5}
+.acc-badge{border-radius:5px;padding:2px 8px;font-size:10px;font-weight:700;white-space:nowrap}
+.acc-CREACIÓN{background:var(--green-bg);color:var(--green)}
+.acc-MODIFICACIÓN{background:var(--amber-bg);color:#92400e}
+.acc-ELIMINACIÓN{background:var(--red-bg);color:var(--red)}
+.diff-table td{padding:7px 10px;font-size:12px;vertical-align:top;border-bottom:1px solid var(--gray-100)}
+.diff-old{background:#fef2f2;color:#991b1b;text-decoration:line-through;word-break:break-word}
+.diff-new{background:#f0fdf4;color:#166534;font-weight:600;word-break:break-word}
+
 /* Responsivo */
 @media(max-width:640px){
   .form-grid,.form-grid.cols-3{grid-template-columns:1fr}
@@ -194,13 +222,44 @@ tbody td{padding:9px 12px;vertical-align:top}
     <div class="main">Dirección de Gestión de Riesgos</div>
     <div class="sub">Sistema de Validación de Eventos Públicos · GAD Municipal Cuenca</div>
   </div>
-  <div class="conn-status">
-    <div class="conn-dot" id="connDot"></div>
-    <span id="connLabel">Conectando...</span>
+  <div class="header-actions">
+    <div class="conn-status">
+      <div class="conn-dot" id="connDot"></div>
+      <span id="connLabel">Conectando...</span>
+    </div>
+    <div class="user-box" id="userBox">
+      <span>👤 <span class="u-nombre" id="uNombre"></span></span>
+      <span class="u-rol" id="uRol"></span>
+      <button class="btn-admin" onclick="abrirCambioClave(false)" title="Cambiar mi contraseña">🔑</button>
+      <button class="btn-admin" onclick="confirmarSalida()" title="Cerrar sesión">Salir</button>
+    </div>
   </div>
 </header>
 
-<div class="app-body">
+<!-- ══════════ INICIO DE SESIÓN ══════════ -->
+<div class="login-screen" id="loginScreen" style="display:none">
+  <div class="login-card">
+    <div class="lc-head">
+      <h2>🔐 Ingreso a la plataforma</h2>
+      <p>Validación de Eventos Públicos · Dirección de Gestión de Riesgos</p>
+    </div>
+    <div class="lc-body">
+      <div class="login-error" id="loginError"></div>
+      <div class="form-group">
+        <label>Usuario</label>
+        <input type="text" id="loginUser" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Ej: pchasi" onkeydown="if(event.key==='Enter')document.getElementById('loginPass').focus()">
+      </div>
+      <div class="form-group">
+        <label>Contraseña</label>
+        <input type="password" id="loginPass" autocomplete="current-password" onkeydown="if(event.key==='Enter')iniciarSesion()">
+      </div>
+      <button class="btn btn-primary" id="btnLogin" onclick="iniciarSesion()" style="justify-content:center">Ingresar</button>
+      <div class="login-hint">Cada técnico usa su propia cuenta. No compartas tu contraseña: todos los cambios quedan registrados a tu nombre. Si la olvidaste, solicita el restablecimiento al administrador.</div>
+    </div>
+  </div>
+</div>
+
+<div class="app-body" id="appRoot" style="display:none">
 
   <!-- AÑO DE GESTIÓN (cada año tiene su propia numeración y registros) -->
   <div class="year-bar" id="yearBar"></div>
@@ -213,8 +272,11 @@ tbody td{padding:9px 12px;vertical-align:top}
     <button class="tab-btn" onclick="showTab('consulta')" id="tab-consulta">
       🔍 <span class="label">Consultar Registros</span>
     </button>
-    <button class="tab-btn" onclick="showTab('importar')" id="tab-importar">
+    <button class="tab-btn" onclick="showTab('importar')" id="tab-importar" style="display:none">
       📥 <span class="label">Importar Datos</span>
+    </button>
+    <button class="tab-btn" onclick="showTab('auditoria')" id="tab-auditoria" style="display:none">
+      🛡️ <span class="label">Bitácora de Cambios</span>
     </button>
   </div>
 
@@ -366,14 +428,8 @@ tbody td{padding:9px 12px;vertical-align:top}
 
           <div class="form-group">
             <label>Técnico/a DGR *</label>
-            <select id="f_tecnico">
+            <select id="f_tecnico" class="tecnico-select">
               <option value="">— Seleccionar —</option>
-              <option value="PAOLA CHASI">Paola Chasi</option>
-              <option value="ELTIN PESANTEZ">Eltin Pesantez</option>
-              <option value="PABLO ORELLANA">Pablo Orellana</option>
-              <option value="JOHNNY ALVARRACIN">Johnny Alvarracín</option>
-              <option value="ESTEFANIA OCHOA">Estefanía Ochoa</option>
-              <option value="SOFIA ABAD">Sofía Abad</option>
             </select>
           </div>
           <div class="form-group full">
@@ -425,14 +481,8 @@ tbody td{padding:9px 12px;vertical-align:top}
         <!-- Filtros fila 1: texto y técnico -->
         <div class="search-bar" style="margin-bottom:8px">
           <input type="text" id="searchText" placeholder="Buscar por evento, lugar, N° validación, parroquia..." oninput="filtrarTabla()" style="flex:2">
-          <select id="searchTecnico" onchange="filtrarTabla()">
+          <select id="searchTecnico" class="tecnico-select" onchange="filtrarTabla()">
             <option value="">Todos los técnicos</option>
-            <option value="PAOLA CHASI">Paola Chasi</option>
-            <option value="ELTIN PESANTEZ">Eltin Pesantez</option>
-            <option value="PABLO ORELLANA">Pablo Orellana</option>
-            <option value="JOHNNY ALVARRACIN">Johnny Alvarracín</option>
-            <option value="ESTEFANIA OCHOA">Estefanía Ochoa</option>
-            <option value="SOFIA ABAD">Sofía Abad</option>
           </select>
           <select id="searchParroquia" onchange="filtrarTabla()">
             <option value="">Todas las parroquias</option>
@@ -492,7 +542,7 @@ tbody td{padding:9px 12px;vertical-align:top}
               </tr>
             </thead>
             <tbody id="tablaBody">
-              <tr><td colspan="15" style="text-align:center;padding:24px;color:#94a3b8">Cargando registros...</td></tr>
+              <tr><td colspan="16" style="text-align:center;padding:24px;color:#94a3b8">Cargando registros...</td></tr>
             </tbody>
           </table>
         </div>
@@ -547,6 +597,54 @@ tbody td{padding:9px 12px;vertical-align:top}
     </div>
   </div><!-- /tab-importar -->
 
+  <!-- ══════════════════════════════════════════
+       TAB 4: BITÁCORA (solo administrador)
+  ══════════════════════════════════════════ -->
+  <div id="tab-content-auditoria" style="display:none">
+    <div class="card">
+      <div class="card-header">
+        <h2>🛡️ Bitácora de Cambios — Creaciones, modificaciones y eliminaciones</h2>
+        <div class="badge" id="audCount">0 movimientos</div>
+      </div>
+      <div class="card-body">
+        <div class="search-bar">
+          <input type="text" id="audTexto" placeholder="Buscar por N° de validación, técnico, campo..." oninput="renderAuditoria()">
+          <select id="audUsuario" class="tecnico-select" onchange="renderAuditoria()">
+            <option value="">Todos los técnicos</option>
+          </select>
+          <select id="audAccion" onchange="renderAuditoria()">
+            <option value="">Todas las acciones</option>
+            <option>CREACIÓN</option>
+            <option>MODIFICACIÓN</option>
+            <option>ELIMINACIÓN</option>
+          </select>
+          <input type="date" id="audDesde" onchange="renderAuditoria()" style="flex:0;min-width:140px" title="Desde">
+          <input type="date" id="audHasta" onchange="renderAuditoria()" style="flex:0;min-width:140px" title="Hasta">
+          <button class="btn btn-secondary btn-sm" onclick="cargarAuditoria()">↺ Actualizar</button>
+          <button class="btn btn-success btn-sm" onclick="exportarAuditoria()">📊 Exportar</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Fecha y hora</th>
+                <th>Acción</th>
+                <th>N° Validación</th>
+                <th>Técnico/a</th>
+                <th>Usuario</th>
+                <th>Campos modificados</th>
+                <th>Detalle</th>
+              </tr>
+            </thead>
+            <tbody id="audBody">
+              <tr><td colspan="7" style="text-align:center;padding:24px;color:#94a3b8">Inicia sesión como administrador para ver la bitácora</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div><!-- /tab-auditoria -->
+
 </div><!-- /app-body -->
 
 <!-- TOAST -->
@@ -563,6 +661,32 @@ tbody td{padding:9px 12px;vertical-align:top}
   </div>
 </div>
 
+<!-- MODAL CAMBIO DE CONTRASEÑA -->
+<div class="modal-overlay" id="claveOverlay" style="display:none">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header">
+      <h3>🔑 Cambiar contraseña</h3>
+      <button class="modal-close" id="claveCerrar" onclick="cerrarCambioClave()">✕</button>
+    </div>
+    <div class="modal-body">
+      <p id="claveAviso" style="font-size:12px;color:#92400e;background:var(--amber-bg);border-radius:7px;padding:9px 12px;margin-bottom:14px;display:none">Estás usando una contraseña temporal. Por seguridad, define tu propia contraseña para continuar.</p>
+      <div class="form-group" style="margin-bottom:12px">
+        <label>Nueva contraseña</label>
+        <input type="password" id="claveNueva" autocomplete="new-password">
+      </div>
+      <div class="form-group" style="margin-bottom:8px">
+        <label>Confirmar contraseña</label>
+        <input type="password" id="claveConfirma" autocomplete="new-password" onkeydown="if(event.key==='Enter')guardarNuevaClave()">
+      </div>
+      <div class="login-hint" style="margin-bottom:14px">Mínimo 10 caracteres, con letras y números.</div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="btnClave" onclick="guardarNuevaClave()">Guardar contraseña</button>
+        <button class="btn btn-secondary" id="claveCancelar" onclick="cerrarCambioClave()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 // ══════════════════════════════════════════
 // CONFIGURACIÓN SUPABASE
@@ -571,22 +695,446 @@ const SUPA_URL = 'https://frbczxeykdcghljzdomy.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZyYmN6eGV5a2RjZ2hsanpkb215Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExMTQ3MTYsImV4cCI6MjA5NjY5MDcxNn0.Lq7apfGPaTtO3w16QquUsKPJN0lvx3yQSYgthf2Amhc';
 const TABLE = 'eventos_validacion';
 
+const TABLE_AUDIT = 'eventos_auditoria';
+
 async function supaFetch(path, opts={}) {
+  const { headers: extraHeaders, prefer, ...rest } = opts;
+  const token = await tokenVigente();
+  if (!token) throw new Error('Sesión no iniciada');
   const res = await fetch(SUPA_URL + '/rest/v1/' + path, {
+    ...rest,
     headers: {
       'apikey': SUPA_KEY,
-      'Authorization': 'Bearer ' + SUPA_KEY,
+      'Authorization': 'Bearer ' + token,
       'Content-Type': 'application/json',
-      'Prefer': opts.prefer || 'return=representation',
-      ...opts.headers
-    },
-    ...opts
+      'Prefer': prefer || 'return=representation',
+      ...(extraHeaders || {})
+    }
   });
+  if (res.status === 401) {
+    cerrarSesion('Tu sesión expiró. Ingresa nuevamente.');
+    throw new Error('Sesión expirada');
+  }
   if (!res.ok) {
     const err = await res.json().catch(()=>({}));
     throw new Error(err.message || res.statusText);
   }
   return res.status === 204 ? null : res.json();
+}
+
+// ══════════════════════════════════════════
+// TÉCNICOS (lista única para todos los selectores)
+// ══════════════════════════════════════════
+// v: valor guardado · t: nombre para pantalla · pdf: nombre como aparece en la firma del PDF
+// (agregar el título profesional, ej. 'Ing. Paola Chasi', si se desea que salga en el documento)
+const TECNICOS = [
+  {v:'PAOLA CHASI',       t:'Paola Chasi',       pdf:'Paola Chasi'},
+  {v:'ELTIN PESANTEZ',    t:'Eltin Pesantez',    pdf:'Eltin Pesantez'},
+  {v:'PABLO ORELLANA',    t:'Pablo Orellana',    pdf:'Pablo Orellana'},
+  {v:'JOHNNY ALVARRACIN', t:'Johnny Alvarracín', pdf:'Johnny Alvarracín'},
+  {v:'ESTEFANIA OCHOA',   t:'Estefanía Ochoa',   pdf:'Estefanía Ochoa'},
+  {v:'SOFIA ABAD',        t:'Sofía Abad',        pdf:'Sofía Abad'},
+  {v:'XAVIER PULGARIN',   t:'Xavier Pulgarín',   pdf:'Xavier Pulgarín'}
+];
+const CARGO_TECNICO_PDF = 'Técnico/a de la Dirección de Gestión de Riesgos';
+
+// Nombre del técnico responsable para la firma del PDF
+function nombreTecnicoPDF(valor) {
+  if (!valor) return '';
+  const t = TECNICOS.find(x => x.v === String(valor).toUpperCase().trim());
+  return t ? t.pdf : String(valor);
+}
+
+function poblarSelectoresTecnicos() {
+  document.querySelectorAll('select.tecnico-select').forEach(sel => {
+    const primera = sel.options[0] ? sel.options[0].outerHTML : '';
+    sel.innerHTML = primera + TECNICOS.map(x => `<option value="${x.v}">${x.t}</option>`).join('');
+  });
+}
+
+// ══════════════════════════════════════════
+// SESIÓN DE USUARIO (Supabase Auth) — una cuenta por técnico
+// Los permisos los aplica el servidor (RLS); la interfaz solo
+// muestra u oculta los controles según el rol.
+// ══════════════════════════════════════════
+const DOMINIO_USUARIOS = 'dgr.local';   // pchasi → pchasi@dgr.local
+const MINUTOS_INACTIVIDAD = 30;         // cierre automático de sesión
+
+let sesion = null;   // {access_token, refresh_token, expires_at, email, clave_cambiada}
+let perfil = null;   // {email, usuario, nombre_tecnico, rol, activo}
+
+function esAdmin()   { return !!(perfil && perfil.rol === 'admin'); }
+function miEmail()   { return perfil ? String(perfil.email).toLowerCase() : ''; }
+function miTecnico() {
+  // Devuelve el nombre si la cuenta corresponde a un técnico de la lista (incluida la administradora)
+  return perfil && TECNICOS.some(x => x.v === perfil.nombre_tecnico) ? perfil.nombre_tecnico : '';
+}
+function puedeEditar(r) {
+  return esAdmin() || (!!r.creado_por_email && r.creado_por_email.toLowerCase() === miEmail());
+}
+function aEmail(u) {
+  u = (u || '').trim().toLowerCase();
+  return u.includes('@') ? u : u + '@' + DOMINIO_USUARIOS;
+}
+function usuarioCorto(e) { return (e || '').replace('@' + DOMINIO_USUARIOS, ''); }
+
+function guardarSesion(s) {
+  sesion = s;
+  try {
+    if (s) sessionStorage.setItem('dgr_sesion', JSON.stringify(s));
+    else sessionStorage.removeItem('dgr_sesion');
+  } catch(e) {}
+}
+
+function tomarSesion(data, previa) {
+  const meta = (data.user && data.user.user_metadata) || {};
+  return {
+    access_token: data.access_token,
+    refresh_token: data.refresh_token,
+    expires_at: Date.now() + (data.expires_in || 3600) * 1000,
+    email: ((data.user && data.user.email) || (previa && previa.email) || '').toLowerCase(),
+    clave_cambiada: !!meta.clave_cambiada || !!(previa && previa.clave_cambiada)
+  };
+}
+
+async function tokenVigente() {
+  if (!sesion) return null;
+  if (Date.now() < sesion.expires_at - 60000) return sesion.access_token;
+  try {
+    const res = await fetch(SUPA_URL + '/auth/v1/token?grant_type=refresh_token', {
+      method: 'POST',
+      headers: {'apikey': SUPA_KEY, 'Content-Type': 'application/json'},
+      body: JSON.stringify({refresh_token: sesion.refresh_token})
+    });
+    if (!res.ok) throw new Error();
+    guardarSesion(tomarSesion(await res.json(), sesion));
+    return sesion.access_token;
+  } catch(e) {
+    cerrarSesion('Tu sesión expiró. Ingresa nuevamente.');
+    return null;
+  }
+}
+
+function mostrarLogin(mensaje, tipo) {
+  document.getElementById('appRoot').style.display = 'none';
+  document.getElementById('userBox').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('connDot').className = 'conn-dot';
+  document.getElementById('connLabel').textContent = 'Sin sesión';
+  const err = document.getElementById('loginError');
+  if (mensaje) {
+    err.textContent = mensaje;
+    err.className = 'login-error' + (tipo === 'info' ? ' info' : '');
+    err.style.display = 'block';
+  } else {
+    err.style.display = 'none';
+  }
+  setTimeout(() => document.getElementById('loginUser').focus(), 50);
+}
+
+async function iniciarSesion() {
+  const usuario = document.getElementById('loginUser').value.trim();
+  const password = document.getElementById('loginPass').value;
+  if (!usuario || !password) { mostrarLogin('Ingresa tu usuario y contraseña'); return; }
+  const btn = document.getElementById('btnLogin');
+  btn.disabled = true; btn.textContent = 'Verificando...';
+  try {
+    const res = await fetch(SUPA_URL + '/auth/v1/token?grant_type=password', {
+      method: 'POST',
+      headers: {'apikey': SUPA_KEY, 'Content-Type': 'application/json'},
+      body: JSON.stringify({email: aEmail(usuario), password})
+    });
+    const data = await res.json().catch(()=>({}));
+    if (!res.ok) throw new Error('Usuario o contraseña incorrectos');
+    guardarSesion(tomarSesion(data));
+    await cargarPerfil();
+    document.getElementById('loginPass').value = '';
+    await entrarApp();
+  } catch(e) {
+    guardarSesion(null); perfil = null;
+    mostrarLogin(e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Ingresar';
+  }
+}
+
+async function cargarPerfil() {
+  const d = await supaFetch('dgr_usuarios?select=email,usuario,nombre_tecnico,rol,activo&email=eq.' + encodeURIComponent(sesion.email));
+  if (!d || !d.length || !d[0].activo) {
+    throw new Error('Tu cuenta no está habilitada en la plataforma. Contacta al administrador.');
+  }
+  perfil = d[0];
+}
+
+async function entrarApp() {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('appRoot').style.display = 'block';
+  aplicarPerfil();
+  renderYearBar();
+  limpiarFormulario();
+  showTab('registro');
+  iniciarControlInactividad();
+  if (!sesion.clave_cambiada) abrirCambioClave(true);
+  await verificarConexion();
+  await cargarProximoNumero();
+  await cargarRegistros();
+}
+
+function aplicarPerfil() {
+  const admin = esAdmin();
+  document.getElementById('userBox').style.display = 'flex';
+  document.getElementById('uNombre').textContent = perfil.nombre_tecnico;
+  const rol = document.getElementById('uRol');
+  rol.textContent = admin ? 'Administrador' : 'Técnico';
+  rol.classList.toggle('admin', admin);
+  document.getElementById('tab-auditoria').style.display = admin ? 'flex' : 'none';
+  document.getElementById('tab-importar').style.display = admin ? 'flex' : 'none';
+}
+
+function confirmarSalida() {
+  if (editandoId && !confirm('Hay una edición en curso. ¿Descartar los cambios y salir?')) return;
+  cerrarSesion();
+}
+
+async function cerrarSesion(motivo) {
+  const s = sesion;
+  guardarSesion(null);
+  perfil = null;
+  detenerControlInactividad();
+  if (s) {
+    fetch(SUPA_URL + '/auth/v1/logout', {
+      method: 'POST',
+      headers: {'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + s.access_token}
+    }).catch(()=>{});
+  }
+  // Borrar de la pantalla los datos cargados
+  editandoId = null;
+  todosRegistros = []; filtradosGlobal = []; window._filtrados = []; registrosAuditoria = [];
+  document.getElementById('tablaBody').innerHTML = '';
+  document.getElementById('audBody').innerHTML = '';
+  cerrarModal();
+  document.getElementById('claveOverlay').style.display = 'none';
+  limpiarFormulario();
+  mostrarLogin(motivo, 'info');
+}
+
+// ── Cambio de contraseña ──
+let claveObligatoria = false;
+
+function abrirCambioClave(obligatorio) {
+  claveObligatoria = !!obligatorio;
+  document.getElementById('claveAviso').style.display = obligatorio ? 'block' : 'none';
+  document.getElementById('claveCerrar').style.display = obligatorio ? 'none' : 'inline';
+  document.getElementById('claveCancelar').style.display = obligatorio ? 'none' : 'inline-flex';
+  document.getElementById('claveNueva').value = '';
+  document.getElementById('claveConfirma').value = '';
+  document.getElementById('claveOverlay').style.display = 'flex';
+  setTimeout(() => document.getElementById('claveNueva').focus(), 50);
+}
+
+function cerrarCambioClave() {
+  if (claveObligatoria) return;
+  document.getElementById('claveOverlay').style.display = 'none';
+}
+
+async function guardarNuevaClave() {
+  const n = document.getElementById('claveNueva').value;
+  const c = document.getElementById('claveConfirma').value;
+  if (n.length < 10 || !/[A-Za-z]/.test(n) || !/\d/.test(n)) { toast('La contraseña debe tener al menos 10 caracteres, con letras y números', 'warn'); return; }
+  if (n !== c) { toast('Las contraseñas no coinciden', 'warn'); return; }
+  const btn = document.getElementById('btnClave');
+  btn.disabled = true;
+  try {
+    const token = await tokenVigente();
+    const res = await fetch(SUPA_URL + '/auth/v1/user', {
+      method: 'PUT',
+      headers: {'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'},
+      body: JSON.stringify({password: n, data: {clave_cambiada: true}})
+    });
+    const data = await res.json().catch(()=>({}));
+    if (!res.ok) throw new Error(data.msg || data.error_description || 'No se pudo cambiar la contraseña');
+    sesion.clave_cambiada = true;
+    guardarSesion(sesion);
+    claveObligatoria = false;
+    document.getElementById('claveOverlay').style.display = 'none';
+    toast('🔑 Contraseña actualizada', 'ok');
+  } catch(e) {
+    toast(e.message, 'err');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ── Cierre automático por inactividad ──
+let timerInactividad = null;
+let ultimaActividad = 0;
+const EVENTOS_ACTIVIDAD = ['click','keydown','mousemove','scroll','touchstart'];
+
+function registrarActividad() {
+  const ahora = Date.now();
+  if (ahora - ultimaActividad < 5000) return; // como máximo cada 5 s
+  ultimaActividad = ahora;
+  clearTimeout(timerInactividad);
+  timerInactividad = setTimeout(() => {
+    if (sesion) cerrarSesion(`La sesión se cerró tras ${MINUTOS_INACTIVIDAD} minutos sin actividad.`);
+  }, MINUTOS_INACTIVIDAD * 60000);
+}
+function iniciarControlInactividad() {
+  EVENTOS_ACTIVIDAD.forEach(ev => document.addEventListener(ev, registrarActividad, {passive:true}));
+  ultimaActividad = 0;
+  registrarActividad();
+}
+function detenerControlInactividad() {
+  clearTimeout(timerInactividad);
+  EVENTOS_ACTIVIDAD.forEach(ev => document.removeEventListener(ev, registrarActividad));
+}
+
+// ══════════════════════════════════════════
+// BITÁCORA DE CAMBIOS (solo administrador)
+// ══════════════════════════════════════════
+let registrosAuditoria = [];
+
+const ETIQUETAS_CAMPOS = {
+  num_resolucion:'N° Validación', nombre_evento:'Nombre del evento', fecha_inicio:'Fecha de inicio',
+  fecha_fin:'Fecha de finalización', lugar:'Lugar', aforo:'Aforo', fecha_validacion:'Fecha de validación',
+  gad_parroquial:'Parroquia', oficio_gad:'Oficio GAD parroquial', clasificacion:'Clasificación',
+  nombre_organizador:'Organizador/a', contacto_organizador:'Contacto organizador/a',
+  nombre_delegado:'Delegado/a', contacto_delegado:'Contacto delegado/a', tecnico:'Técnico/a responsable',
+  observaciones:'Observaciones', quien_firma:'Quién firma', horarios:'Horarios y aforo por día',
+  tramite_gad:'Trámite GAD', tramite_sistema:'Trámite sistema', firma:'Firma', created_at:'Creado'
+};
+const etiquetaCampo = c => ETIQUETAS_CAMPOS[c] || c;
+
+function esc(v) {
+  return String(v === null || v === undefined ? '' : v)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function fmtFechaHora(ts) {
+  if (!ts) return '—';
+  const d = new Date(ts);
+  return d.toLocaleString('es-EC', {day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'});
+}
+
+function fmtValorCampo(campo, v) {
+  if (v === null || v === undefined || v === '') return '—';
+  if (campo === 'horarios') {
+    const txt = typeof v === 'string' ? v : JSON.stringify(v);
+    return formatHorarioExport(txt) + (parseHorarios(txt) ? ' | Aforos: ' + parseHorarios(txt).map(h=>h.aforo||'—').join(', ') : '');
+  }
+  if (['fecha_inicio','fecha_fin','fecha_validacion'].includes(campo)) return formatFecha(String(v));
+  return String(v);
+}
+
+async function cargarAuditoria() {
+  if (!esAdmin()) return;
+  const body = document.getElementById('audBody');
+  body.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:#94a3b8">Cargando bitácora...</td></tr>';
+  try {
+    const data = await supaFetch(TABLE_AUDIT + '?select=*&order=fecha.desc&limit=2000');
+    registrosAuditoria = data || [];
+    renderAuditoria();
+  } catch(e) {
+    body.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:24px;color:#dc2626">Error al cargar la bitácora: ${esc(e.message)}</td></tr>`;
+  }
+}
+
+function auditoriaFiltrada() {
+  const txt = document.getElementById('audTexto').value.toLowerCase();
+  const usr = document.getElementById('audUsuario').value;
+  const acc = document.getElementById('audAccion').value;
+  const desde = document.getElementById('audDesde').value;
+  const hasta = document.getElementById('audHasta').value;
+  return registrosAuditoria.filter(a => {
+    const fechaLocal = a.fecha ? new Date(a.fecha).toLocaleDateString('sv-SE') : '';
+    if (usr && (a.usuario||'') !== usr) return false;
+    if (acc && a.accion !== acc) return false;
+    if (desde && fechaLocal < desde) return false;
+    if (hasta && fechaLocal > hasta) return false;
+    if (txt) {
+      const blob = [a.num_resolucion, a.usuario, a.cuenta, a.accion, (a.campos_modificados||[]).map(etiquetaCampo).join(' ')].join(' ').toLowerCase();
+      if (!blob.includes(txt)) return false;
+    }
+    return true;
+  });
+}
+
+function renderAuditoria() {
+  const lista = auditoriaFiltrada();
+  document.getElementById('audCount').textContent = lista.length + ' movimientos';
+  const body = document.getElementById('audBody');
+  if (!lista.length) {
+    body.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:#94a3b8">Sin movimientos registrados</td></tr>';
+    return;
+  }
+  body.innerHTML = lista.map(a => `
+    <tr>
+      <td style="white-space:nowrap">${fmtFechaHora(a.fecha)}</td>
+      <td><span class="acc-badge acc-${esc(a.accion)}">${esc(a.accion)}</span></td>
+      <td><span class="badge-num">${esc(a.num_resolucion||'—')}</span></td>
+      <td style="font-size:11px;font-weight:700">${esc(a.usuario||'SIN IDENTIFICAR')}</td>
+      <td style="font-size:10px;color:var(--gray-400)">${esc(usuarioCorto(a.cuenta)||'—')}</td>
+      <td style="font-size:11px;max-width:260px">${a.accion==='MODIFICACIÓN' ? esc((a.campos_modificados||[]).map(etiquetaCampo).join(', ')) : '—'}</td>
+      <td><button class="btn btn-secondary btn-sm" onclick="verCambio(${a.id})">👁 Ver</button></td>
+    </tr>`).join('');
+}
+
+function verCambio(id) {
+  const a = registrosAuditoria.find(x => x.id === id);
+  if (!a) return;
+  const ant = a.datos_anteriores || {};
+  const nue = a.datos_nuevos || {};
+  let contenido;
+  if (a.accion === 'MODIFICACIÓN') {
+    const campos = a.campos_modificados || [];
+    contenido = `<table class="diff-table" style="width:100%;border-collapse:collapse">
+      <thead><tr><th style="width:24%">Campo</th><th style="width:38%">Valor anterior</th><th>Valor nuevo</th></tr></thead>
+      <tbody>${campos.map(c => `<tr>
+        <td style="font-weight:700;color:var(--navy)">${esc(etiquetaCampo(c))}</td>
+        <td class="diff-old">${esc(fmtValorCampo(c, ant[c]))}</td>
+        <td class="diff-new">${esc(fmtValorCampo(c, nue[c]))}</td>
+      </tr>`).join('')}</tbody></table>`;
+  } else {
+    const datos = a.accion === 'ELIMINACIÓN' ? ant : nue;
+    const campos = Object.keys(ETIQUETAS_CAMPOS).filter(c => c !== 'firma' && datos[c] !== undefined);
+    contenido = `<p style="font-size:12px;color:var(--gray-600);margin-bottom:10px">${a.accion==='ELIMINACIÓN'?'Datos del registro al momento de ser eliminado:':'Datos con los que se creó el registro:'}</p>
+      <table class="diff-table" style="width:100%;border-collapse:collapse"><tbody>${campos.map(c => `<tr>
+        <td style="font-weight:700;color:var(--navy);width:30%">${esc(etiquetaCampo(c))}</td>
+        <td>${esc(fmtValorCampo(c, datos[c]))}</td></tr>`).join('')}</tbody></table>`;
+  }
+  document.getElementById('modalTitle').textContent = `${a.accion} · ${a.num_resolucion||''}`;
+  document.getElementById('modalBody').innerHTML = `
+    <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:12px;margin-bottom:14px;color:var(--gray-600)">
+      <div><strong>Fecha:</strong> ${fmtFechaHora(a.fecha)}</div>
+      <div><strong>Técnico/a:</strong> ${esc(a.usuario||'SIN IDENTIFICAR')}</div>
+      <div><strong>Usuario:</strong> ${esc(usuarioCorto(a.cuenta)||'—')}</div>
+    </div>
+    ${contenido}
+    <div class="btn-row" style="margin-top:16px"><button class="btn btn-secondary" onclick="cerrarModal()">Cerrar</button></div>`;
+  document.getElementById('modalOverlay').style.display = 'flex';
+}
+
+function exportarAuditoria() {
+  const lista = auditoriaFiltrada();
+  if (!lista.length) { toast('No hay movimientos para exportar', 'warn'); return; }
+  const SEP = ';';
+  const q = v => '"' + String(v===null||v===undefined?'':v).replace(/"/g,'""') + '"';
+  const filas = [['FECHA','ACCIÓN','N° VALIDACIÓN','TÉCNICO/A','USUARIO','CAMPO','VALOR ANTERIOR','VALOR NUEVO'].join(SEP)];
+  lista.forEach(a => {
+    const base = [fmtFechaHora(a.fecha), a.accion, a.num_resolucion, a.usuario||'SIN IDENTIFICAR', usuarioCorto(a.cuenta)];
+    if (a.accion === 'MODIFICACIÓN' && (a.campos_modificados||[]).length) {
+      a.campos_modificados.forEach(c => filas.push([...base, etiquetaCampo(c),
+        fmtValorCampo(c, (a.datos_anteriores||{})[c]), fmtValorCampo(c, (a.datos_nuevos||{})[c])].map(q).join(SEP)));
+    } else {
+      filas.push([...base, '', '', ''].map(q).join(SEP));
+    }
+  });
+  const blob = new Blob(['﻿' + filas.join('\r\n')], {type:'text/csv;charset=utf-8'});
+  const el = document.createElement('a');
+  el.href = URL.createObjectURL(blob);
+  el.download = 'BITACORA_CAMBIOS_DGR_' + new Date().toISOString().slice(0,10) + '.csv';
+  el.click();
+  toast(`✅ Bitácora exportada — ${lista.length} movimientos`, 'ok');
 }
 
 // ══════════════════════════════════════════
@@ -832,19 +1380,24 @@ window.addEventListener('load', async () => {
     if (guardado && aniosDisponibles().includes(guardado)) anioActivo = guardado;
   } catch(e) {}
   if (!aniosDisponibles().includes(anioActivo)) anioActivo = new Date().getFullYear();
-  renderYearBar();
-  document.getElementById('f_fecha_validacion').valueAsDate = new Date();
-  await verificarConexion();
-  await cargarProximoNumero();
-  await cargarRegistros();
+  poblarSelectoresTecnicos();
+  try {
+    const s = JSON.parse(sessionStorage.getItem('dgr_sesion') || 'null');
+    if (s && s.access_token) sesion = s;
+  } catch(e) {}
+  if (sesion) {
+    try { await cargarPerfil(); await entrarApp(); return; }
+    catch(e) { guardarSesion(null); perfil = null; }
+  }
+  mostrarLogin();
 });
 
 async function verificarConexion() {
   try {
-    const res = await fetch(SUPA_URL + '/rest/v1/' + TABLE + '?limit=1', {
+    const res = await fetch(SUPA_URL + '/rest/v1/' + TABLE + '?select=id&limit=1', {
       headers: {
         'apikey': SUPA_KEY,
-        'Authorization': 'Bearer ' + SUPA_KEY
+        'Authorization': 'Bearer ' + (await tokenVigente())
       }
     });
     if (res.ok) {
@@ -898,6 +1451,7 @@ function getNumeroValidacion() {
 // GUARDAR REGISTRO
 // ══════════════════════════════════════════
 async function guardarRegistro() {
+  if (!perfil) { toast('Sesión no iniciada', 'err'); return; }
   // Validación básica
   const req = {
     nombre_evento: document.getElementById('f_nombre_evento').value.trim(),
@@ -933,7 +1487,8 @@ async function guardarRegistro() {
   const quienFirmaEl = document.querySelector('input[name="quien_firma"]:checked');
   const quienFirma = quienFirmaEl ? quienFirmaEl.value : 'ORGANIZADOR/A';
 
-  // Si estamos editando, se conserva el num_resolucion original; si es nuevo, se asigna el siguiente correlativo
+  // Edición: se conserva el N° original. Nuevo: el servidor asigna el correlativo definitivo
+  // (el número mostrado es referencial; si otro técnico guardó antes, se asigna el siguiente).
   const numResolucion = editandoId ? document.getElementById('numValue').textContent.trim() : getNumeroValidacion();
 
   const payload = {
@@ -955,16 +1510,21 @@ async function guardarRegistro() {
     observaciones: document.getElementById('f_observaciones').value.trim() || null,
     quien_firma: quienFirma,
     horarios: obtenerHorarios()
+    // Autor, fecha de modificación y dueño del registro los asigna el servidor
   };
 
   try {
     if (editandoId) {
       // ── MODO EDICIÓN: actualizar registro existente ──
-      await supaFetch(TABLE + '?id=eq.' + editandoId, {
+      delete payload.num_resolucion; // el N° de validación no se modifica
+      const actualizados = await supaFetch(TABLE + '?id=eq.' + editandoId, {
         method: 'PATCH',
         body: JSON.stringify(payload),
-        prefer: 'return=minimal'
+        prefer: 'return=representation'
       });
+      if (!actualizados || !actualizados.length) {
+        throw new Error('no tienes permiso para modificar este registro (solo su técnico o el administrador)');
+      }
 
       toast('✅ Validación ' + numResolucion + ' actualizada correctamente', 'ok');
 
@@ -976,28 +1536,21 @@ async function guardarRegistro() {
       await cargarRegistros();
 
     } else {
-      // ── MODO NUEVO: verificar que el número no esté ya usado y crear ──
-      const check = await supaFetch(TABLE + '?num_resolucion=eq.' + encodeURIComponent(numResolucion) + '&select=id');
-      if (check && check.length > 0) {
-        toast('⚠️ Número ya usado. Recargando numeración...', 'warn');
-        await cargarProximoNumero();
-        return;
-      }
-
+      // ── MODO NUEVO: el servidor asigna el número definitivo ──
       payload.firma = null;
-      payload.created_at = new Date().toISOString();
 
-      await supaFetch(TABLE, {method:'POST', body: JSON.stringify(payload), prefer:'return=representation'});
+      const creados = await supaFetch(TABLE, {method:'POST', body: JSON.stringify(payload), prefer:'return=representation'});
+      const creado = (creados && creados[0]) || payload;
+      if (creado.num_resolucion !== numResolucion) {
+        toast(`ℹ️ Otro registro tomó el ${numResolucion}; se asignó el ${creado.num_resolucion}`, 'warn', 6000);
+      }
+      toast('✅ Validación ' + creado.num_resolucion + ' guardada correctamente', 'ok');
 
-      toast('✅ Validación ' + numResolucion + ' guardada correctamente', 'ok');
+      // Generar PDF automáticamente con el número definitivo
+      setTimeout(() => generarPDF(creado), 500);
 
-      // Generar PDF automáticamente
-      setTimeout(() => generarPDF(payload), 500);
-
-      // Actualizar numeración y limpiar
-      proximoNumero++;
-      actualizarDisplayNumero();
       limpiarFormulario();
+      await cargarProximoNumero();
       await cargarRegistros();
     }
 
@@ -1125,9 +1678,9 @@ function renderTabla() {
       <td style="font-size:11px">${(r.tecnico||'—').split(' ').slice(0,2).join(' ')}</td>
       <td style="white-space:nowrap">
         <button class="btn btn-secondary btn-sm" onclick="verDetalle(${r.id})" title="Ver detalle">👁</button>
-        <button class="btn btn-secondary btn-sm" onclick="editarRegistro(${r.id})" title="Editar registro" style="background:#fef3c7;color:#92400e;border:1px solid #fcd34d">✏️</button>
+        ${puedeEditar(r) ? `<button class="btn btn-secondary btn-sm" onclick="editarRegistro(${r.id})" title="Editar registro" style="background:#fef3c7;color:#92400e;border:1px solid #fcd34d">✏️</button>` : `<button class="btn btn-secondary btn-sm" disabled title="Solo el técnico que lo registró o el administrador pueden editar" style="opacity:.35;cursor:not-allowed">🔒</button>`}
         <button class="btn btn-primary btn-sm" onclick="generarPDFById(${r.id})" title="Generar PDF">PDF</button>
-        <button class="btn btn-sm" onclick="eliminarRegistro(${r.id},'${r.num_resolucion||''}')" title="Eliminar registro" style="background:#fee2e2;color:#dc2626;border:1px solid #fecaca">🗑</button>
+        ${esAdmin() ? `<button class="btn btn-sm" onclick="eliminarRegistro(${r.id},'${r.num_resolucion||''}')" title="Eliminar registro (solo administrador)" style="background:#fee2e2;color:#dc2626;border:1px solid #fecaca">🗑</button>` : ''}
       </td>
     </tr>
   `).join('');
@@ -1271,6 +1824,8 @@ function verDetalle(id) {
       ${campo('Trámite Sistema Eventos', r.tramite_sistema)}
       ${campo('Técnico/a DGR', r.tecnico)}
       ${campo('Clasificación Evento', r.clasificacion)}
+      ${campo('Registrado por (usuario)', usuarioCorto(r.creado_por_email))}
+      ${campo('Última modificación', r.updated_at ? (r.modificado_por||'') + ' · ' + fmtFechaHora(r.updated_at) : '—')}
     </div>
     ${r.observaciones ? `<div style="margin-top:12px;padding:10px;background:#f8fafc;border-radius:7px;font-size:12px"><strong>Observaciones:</strong> ${r.observaciones}</div>` : ''}
     <div class="btn-row" style="margin-top:16px">
@@ -1298,6 +1853,7 @@ function cerrarModal() {
 function editarRegistro(id) {
   const r = todosRegistros.find(x=>x.id===id);
   if (!r) { toast('Registro no encontrado', 'err'); return; }
+  if (!puedeEditar(r)) { toast('Solo el técnico que registró esta validación o el administrador pueden editarla', 'err'); return; }
 
   editandoId = id;
 
@@ -1371,9 +1927,12 @@ function cancelarEdicion() {
 // ELIMINAR REGISTRO
 // ══════════════════════════════════════════
 async function eliminarRegistro(id, numResolucion) {
-  if (!confirm(`¿Eliminar el registro ${numResolucion}?\n\nEste número quedará disponible para reutilizarse.`)) return;
+  if (!esAdmin()) { toast('Solo el administrador de la plataforma puede eliminar registros', 'err'); return; }
+  if (!confirm(`¿Eliminar el registro ${numResolucion}?\n\nEste número quedará disponible para reutilizarse.\nLa eliminación quedará registrada en la bitácora.`)) return;
   try {
-    await supaFetch(TABLE + '?id=eq.' + id, {method:'DELETE', prefer:'return=minimal'});
+    // return=representation permite comprobar que el servidor realmente eliminó la fila
+    const borrados = await supaFetch(TABLE + '?id=eq.' + id, {method:'DELETE', prefer:'return=representation'});
+    if (!borrados || !borrados.length) throw new Error('el servidor no autorizó la eliminación');
     toast('🗑 Registro ' + numResolucion + ' eliminado. El número quedó disponible.', 'ok');
     await cargarProximoNumero();
     await cargarRegistros();
@@ -1577,6 +2136,8 @@ ${r.observaciones ? `<p class="rec-p"><strong>Observaciones adicionales:</strong
   <div class="inst-block">
     <div class="inst-espacio"></div>
     <div class="inst-line"></div>
+    ${r.tecnico ? `<div style="font-size:7.5pt;font-weight:700;color:#000;line-height:1.3">${nombreTecnicoPDF(r.tecnico)}</div>
+    <div style="font-size:6.5pt;color:#000;line-height:1.3;margin-bottom:2px">${CARGO_TECNICO_PDF}</div>` : ''}
     <div class="inst-label">Dirección Municipal de Gestión de Riesgos</div>
     <div style="font-size:7pt;color:#333;text-transform:uppercase;margin-top:1px">GOBIERNO AUTÓNOMO DESCENTRALIZADO</div>
     <div style="font-size:7pt;color:#333;text-transform:uppercase">MUNICIPAL DEL CANTÓN CUENCA</div>
@@ -1697,6 +2258,7 @@ function procesarCSV(event) {
 }
 
 async function confirmarImport() {
+  if (!esAdmin()) { toast('Solo el administrador puede importar registros', 'err'); return; }
   if (!csvData.length) return;
 
   // Mostrar progreso, ocultar botones
@@ -1826,11 +2388,13 @@ function toast(msg, tipo='info', duracion=3500) {
 // TABS
 // ══════════════════════════════════════════
 function showTab(tab) {
-  ['registro','consulta','importar'].forEach(t => {
+  if ((tab === 'auditoria' || tab === 'importar') && !esAdmin()) { toast('Acceso solo para el administrador', 'err'); return; }
+  ['registro','consulta','importar','auditoria'].forEach(t => {
     document.getElementById('tab-content-' + t).style.display = t===tab ? 'block' : 'none';
     document.getElementById('tab-' + t).classList.toggle('active', t===tab);
   });
   if (tab==='consulta') cargarRegistros();
+  if (tab==='auditoria') cargarAuditoria();
 }
 
 // ══════════════════════════════════════════
@@ -1851,6 +2415,7 @@ function limpiarFormulario() {
   toggleAforoMismo();
   const radio = document.querySelector('input[name="quien_firma"][value="ORGANIZADOR/A"]');
   if (radio) radio.checked = true;
+  if (miTecnico()) document.getElementById('f_tecnico').value = miTecnico();
   if (editandoId) {
     editandoId = null;
     document.getElementById('btnGuardar').textContent = '💾 Guardar Validación';
@@ -1891,7 +2456,3 @@ function parseDate(str) {
 </script>
 </body>
 </html>
-</script>
-</body>
-</html>
-
